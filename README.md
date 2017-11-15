@@ -55,5 +55,10 @@ Search for a file
 ```
   pkg provides bin/firefox
 ```
+You can use the perl regexp in search requests
 
+# TODO
+
+- provides uses the AMD64-latest ports, future versions will use the ABI
+- database is downloaded in /var/tmp and stored in /var/db/pkg/plugins/. The location is hardcoded. 
 
