@@ -22,6 +22,7 @@ pkgng plugin for querying which package provides a particular file
 
 ## Configure pkg to use plugins
 
+/usr/local/etc/pkg.conf
 ```
 PKG_PLUGINS_DIR = "/usr/local/lib/pkg/plugins";
 PKG_ENABLE_PLUGINS = true;
