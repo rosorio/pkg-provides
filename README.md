@@ -1,6 +1,8 @@
 # pkg-provides
 pkgng plugin for querying which package provides a particular file
 
+[![asciicast](https://asciinema.org/a/5LyYruCUrbjI8FEtoq6bHqH95.png)](https://asciinema.org/a/5LyYruCUrbjI8FEtoq6bHqH95)
+
 # How to build / install
 
 ## Requirements
