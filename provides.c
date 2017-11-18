@@ -95,7 +95,7 @@ plugin_archive_extract(int fd, const char * out)
     struct archive *ar = NULL;
     int fd_out = -1;
 
-    fd_out = open(out, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
+    fd_out = open(out, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if ( fd_out < 0) {
         return -1;
     }
