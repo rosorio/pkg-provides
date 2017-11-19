@@ -40,10 +40,12 @@
 static char myname[] = "provides";
 static char myversion[] = "0.1.0";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
-
 static struct pkg_plugin *self;
 
-bool bword = 0;
+void progressbar_start(const char *pmsg);
+void progressbar_stop(void);
+void progressbar_tick(int64_t current, int64_t total);
+
 
 #define BUFLEN 4096
 
@@ -135,6 +137,8 @@ plugin_fetch_file(void)
     FILE * fi;
     int fo;
     int count;
+    struct url_stat us;
+    int64_t size;
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
 
     fo = mkstemp(tmpfile);
@@ -142,25 +146,34 @@ plugin_fetch_file(void)
         goto error;
     }
 
-    fi = fetchGetURL("http://pkgtool.osorio.me/ports.db.xz", "");
+    fi = fetchXGetURL("http://pkgtool.osorio.me/ports.db.xz", &us, "");
     if (fi == NULL) {
         goto error;
     }
 
+    progressbar_start("Feching provides database");
+    progressbar_tick(size,us.size);
     while ((count = fread(buffer, 1, BUFLEN, fi)) > 0) {
         if(write(fo, buffer, count) != count) {
             goto error;
         }
+        size += count;
+        progressbar_tick(size,us.size);
     }
 
     if (!feof(fi)) {
         goto error;
     }
 
+    printf("Extracting database....");
+    fflush(stdout);
+
     lseek(fo, SEEK_SET, 0);
     if (plugin_archive_extract(fo, "/var/db/pkg/plugins/provides.db") != 0 ) {
+        printf("fail\n");
         goto error;
     }
+    printf("success\n");
 
     fclose(fi);
     close(fo);
@@ -170,6 +183,7 @@ plugin_fetch_file(void)
 error:
     if (fi != NULL) {
         fclose(fi);
+        progressbar_stop();
     }
 
     if (fo >= 0) {
