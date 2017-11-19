@@ -386,13 +386,10 @@ plugin_provides_callback(int argc, char **argv)
 {
     char ch;
 
-    while ((ch = getopt(argc, argv, "uw")) != -1) {
+    while ((ch = getopt(argc, argv, "u")) != -1) {
         switch (ch) {
         case 'u':
             return plugin_provides_update();
-            break;
-        case 'w':
-            bword = true;
             break;
         default:
             plugin_provides_usage();
@@ -404,7 +401,7 @@ plugin_provides_callback(int argc, char **argv)
     argc -= optind;
     argv += optind;
 
-    if (argc < 0) {
+    if (argc <= 0) {
         plugin_provides_usage();
         return (EX_USAGE);
     }
