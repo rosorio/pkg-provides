@@ -10,6 +10,7 @@ pkgng plugin for querying which package provides a particular file
   * libfetch (freebsd base )
   * libpcre  ( pkg install pcre )
   * libpkg   ( freebsd base )
+  * uthash   ( pkg install uthash)
 
 ## Build
 
