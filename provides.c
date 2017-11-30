@@ -62,6 +62,14 @@ typedef struct fpkg_t {
 } fpkg_t;
 SLIST_HEAD (pkg_head_t, fpkg_t);
 
+int cb_event(void *data, struct pkgdb *db) {
+    struct pkg_event *ev = data;
+    if (ev->type == PKG_EVENT_INCREMENTAL_UPDATE) {
+        plugin_provides_update();
+    }
+    return (EPKG_OK);
+}
+
 int
 pkg_plugin_init(struct pkg_plugin *p)
 {
@@ -70,6 +78,8 @@ pkg_plugin_init(struct pkg_plugin *p)
     pkg_plugin_set(p, PKG_PLUGIN_NAME, myname);
     pkg_plugin_set(p, PKG_PLUGIN_VERSION, myversion);
     pkg_plugin_set(p, PKG_PLUGIN_DESC, mydescription);
+
+    pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_EVENT, cb_event);
 
     return (EPKG_OK);
 }
