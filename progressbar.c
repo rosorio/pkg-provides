@@ -77,7 +77,7 @@ format_rate_SI(char *buf, int size, off_t bytes)
 }
 
 void
-progressbar_stop(void)
+provides_progressbar_stop(void)
 {
     if (progress_started) {
         if (!isatty(STDOUT_FILENO))
@@ -90,7 +90,7 @@ progressbar_stop(void)
 }
 
 void
-progressbar_start(const char *pmsg) {
+provides_progressbar_start(const char *pmsg) {
     free(progress_message);
     progress_message = NULL;
     progress_debit = true;
@@ -129,7 +129,7 @@ draw_progressbar(int64_t current, int64_t total)
     float age_factor;
 
     if (!progress_started) {
-        progressbar_stop();
+        provides_progressbar_stop();
         return;
     }
 
@@ -230,11 +230,11 @@ draw_progressbar(int64_t current, int64_t total)
         fflush(stdout);
     }
     if (current >= total)
-        return progressbar_stop();
+        return provides_progressbar_stop();
 }
 
 void
-progressbar_tick(int64_t current, int64_t total)
+provides_progressbar_tick(int64_t current, int64_t total)
 {
     int percent;
 
@@ -253,7 +253,7 @@ progressbar_tick(int64_t current, int64_t total)
                 }
             }
             if (current >= total)
-                progressbar_stop();
+                provides_progressbar_stop();
         }
     }
     progress_interrupted = false;

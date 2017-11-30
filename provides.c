@@ -42,9 +42,9 @@ static char myversion[] = "0.1.0";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
 
-void progressbar_start(const char *pmsg);
-void progressbar_stop(void);
-void progressbar_tick(int64_t current, int64_t total);
+void provides_progressbar_start(const char *pmsg);
+void provides_progressbar_stop(void);
+void provides_progressbar_tick(int64_t current, int64_t total);
 
 
 #define BUFLEN 4096
@@ -151,14 +151,14 @@ plugin_fetch_file(void)
         goto error;
     }
 
-    progressbar_start("Feching provides database");
-    progressbar_tick(size,us.size);
+    provides_progressbar_start("Feching provides database");
+    provides_progressbar_tick(size,us.size);
     while ((count = fread(buffer, 1, BUFLEN, fi)) > 0) {
         if(write(fo, buffer, count) != count) {
             goto error;
         }
         size += count;
-        progressbar_tick(size,us.size);
+        provides_progressbar_tick(size,us.size);
     }
 
     if (!feof(fi)) {
@@ -183,7 +183,7 @@ plugin_fetch_file(void)
 error:
     if (fi != NULL) {
         fclose(fi);
-        progressbar_stop();
+        provides_progressbar_stop();
     }
 
     if (fo >= 0) {
