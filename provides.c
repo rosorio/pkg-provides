@@ -138,7 +138,7 @@ plugin_fetch_file(void)
     int fo;
     int count;
     struct url_stat us;
-    int64_t size;
+    int64_t size = 0;
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
 
     fo = mkstemp(tmpfile);
