@@ -213,6 +213,7 @@ plugin_fetch_file(void)
         printf("fail\n");
         goto error;
     }
+    lchmod("/var/db/pkg/plugins/provides.db",S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     printf("success\n");
 
     fclose(fi);
