@@ -425,7 +425,7 @@ int
 plugin_provides_callback(int argc, char **argv)
 {
     char ch;
-    bool do_update;
+    bool do_update = false;
 
     while ((ch = getopt(argc, argv, "uf")) != -1) {
         switch (ch) {
