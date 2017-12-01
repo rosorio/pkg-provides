@@ -41,6 +41,7 @@ static char myname[] = "provides";
 static char myversion[] = "0.1.0";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
+bool force_flag = false;
 
 void provides_progressbar_start(const char *pmsg);
 void provides_progressbar_stop(void);
@@ -145,11 +146,40 @@ plugin_fetch_file(void)
 {
     char buffer[BUFLEN];
     FILE * fi;
-    int fo;
+    int fo, ft;
     int count;
     struct url_stat us;
     int64_t size = 0;
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
+    struct stat sb;
+
+    ft = open("/var/db/pkg/plugins/provides.db", O_RDWR);
+    if (ft < 0) {
+        if (errno == ENOENT) {
+            ft = open("/var/db/pkg/plugins/provides.db", O_RDWR | O_CREAT);
+        }
+        if (ft < 0) {
+            fprintf(stderr,"Insufficient privileges to update the provides database.\n");
+            return (-1);
+        }
+        unlink(ft);
+    } else {
+        if(fstat(ft, &sb) < 0) {
+            fprintf(stderr,"fstat error\n");
+            close(ft);
+            return (-1);
+        }
+        close(ft);
+        if(fetchStatURL("http://pkgtool.osorio.me/ports.db.xz", &us, "") != 0) {
+            fprintf(stderr,"fetchStatURL error\n");
+            return -1;
+        }
+        if(us.mtime < sb.st_mtim.tv_sec && (!force_flag)) {
+            printf("The provides database is up to date.\n");
+            return 0;
+        }
+    }
+    close(ft);
 
     fo = mkstemp(tmpfile);
     if(fo < 0) {
@@ -198,7 +228,6 @@ error:
 
     if (fo >= 0) {
         close(fo);
-
         unlink(tmpfile);
     }
 
@@ -395,17 +424,25 @@ int
 plugin_provides_callback(int argc, char **argv)
 {
     char ch;
+    bool do_update;
 
-    while ((ch = getopt(argc, argv, "u")) != -1) {
+    while ((ch = getopt(argc, argv, "uf")) != -1) {
         switch (ch) {
         case 'u':
-            return plugin_provides_update();
+            do_update = true;
+            break;
+        case 'f':
+            force_flag = true;
             break;
         default:
             plugin_provides_usage();
             return (EX_USAGE);
             break;
         }
+    }
+
+    if (do_update) {
+        return plugin_provides_update();
     }
 
     argc -= optind;
