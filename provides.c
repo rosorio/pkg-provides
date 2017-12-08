@@ -46,9 +46,11 @@ bool force_flag = false;
 void provides_progressbar_start(const char *pmsg);
 void provides_progressbar_stop(void);
 void provides_progressbar_tick(int64_t current, int64_t total);
+int mkpath(char *path);
 
 
 #define BUFLEN 4096
+#define PKG_DB_PATH "/var/db/pkg/provides/"
 
 typedef struct file_t {
     char * name;
@@ -152,11 +154,14 @@ plugin_fetch_file(void)
     int64_t size = 0;
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
     struct stat sb;
+    char path[] =PKG_DB_PATH;
 
-    ft = open("/var/db/pkg/plugins/provides.db", O_RDWR);
+    ft = open(PKG_DB_PATH "provides.db", O_RDWR);
     if (ft < 0) {
         if (errno == ENOENT) {
-            ft = open("/var/db/pkg/plugins/provides.db", O_RDWR | O_CREAT);
+	    if (mkpath(path) == 0) {
+                ft = open(PKG_DB_PATH "provides.db", O_RDWR | O_CREAT);
+	    }
         }
         if (ft < 0) {
             fprintf(stderr,"Insufficient privileges to update the provides database.\n");
@@ -209,11 +214,11 @@ plugin_fetch_file(void)
     fflush(stdout);
 
     lseek(fo, SEEK_SET, 0);
-    if (plugin_archive_extract(fo, "/var/db/pkg/plugins/provides.db") != 0 ) {
+    if (plugin_archive_extract(fo, PKG_DB_PATH "provides.db") != 0 ) {
         printf("fail\n");
         goto error;
     }
-    lchmod("/var/db/pkg/plugins/provides.db",S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+    lchmod(PKG_DB_PATH "provides.db",S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     printf("success\n");
 
     fclose(fi);
@@ -332,7 +337,7 @@ plugin_provides_search(char * pattern)
 
     SLIST_INIT (&head);
 
-    fh = fopen("/var/db/pkg/plugins/provides.db","rb");
+    fh = fopen(PKG_DB_PATH "provides.db","rb");
     if (fh == NULL) {
         fprintf(stderr, "Provides database not found, please update before;\n");
         return (-1);
