@@ -11,7 +11,4 @@ SRCS=		provides.c progressbar.c mkpath.c
 CFLAGS+= -I /usr/local/include
 LDFLAGS+= -L /usr/lib -L /usr/local/lib -lfetch -lpcre -lutil
 
-beforeinstall:
-	${INSTALL} -d ${LIBDIR}
-
 .include <bsd.lib.mk>
