@@ -1,7 +1,7 @@
 .include <bsd.own.mk>
 
 PREFIX?=	/usr/local
-LIBDIR=		${PREFIX}/lib/pkg/plugins
+LIBDIR=		${DESTDIR}${PREFIX}/lib/pkg/plugins
 SHLIB_DIR?=	${LIBDIR}/
 SHLIB_NAME?=	${PLUGIN_NAME}.so
 
