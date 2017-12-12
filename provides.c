@@ -65,28 +65,6 @@ typedef struct fpkg_t {
 } fpkg_t;
 SLIST_HEAD (pkg_head_t, fpkg_t);
 
-int cb_event(void *data, struct pkgdb *db) {
-    struct pkg_event *ev = data;
-    if (ev->type == PKG_EVENT_INCREMENTAL_UPDATE) {
-        plugin_provides_update();
-    }
-    return (EPKG_OK);
-}
-
-int
-pkg_plugin_init(struct pkg_plugin *p)
-{
-    self = p;
-
-    pkg_plugin_set(p, PKG_PLUGIN_NAME, myname);
-    pkg_plugin_set(p, PKG_PLUGIN_VERSION, myversion);
-    pkg_plugin_set(p, PKG_PLUGIN_DESC, mydescription);
-
-    pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_EVENT, cb_event);
-
-    return (EPKG_OK);
-}
-
 int
 pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 {
@@ -167,7 +145,7 @@ plugin_fetch_file(void)
             fprintf(stderr,"Insufficient privileges to update the provides database.\n");
             return (-1);
         }
-        unlink(ft);
+        unlink(PKG_DB_PATH "provides.db");
     } else {
         if(fstat(ft, &sb) < 0) {
             fprintf(stderr,"fstat error\n");
@@ -238,12 +216,6 @@ error:
     }
 
     return (-1);
-}
-
-int
-plugin_provides_update(void)
-{
-    return plugin_fetch_file();
 }
 
 static void
@@ -410,7 +382,7 @@ plugin_provides_search(char * pattern)
 
     while (pkg_repos(&r) == EPKG_OK) {
         if (pkg_repo_enabled(r)) {
-            repo_name = pkg_repo_name(r);
+            repo_name = (char *)pkg_repo_name(r);
             display_per_repo(repo_name, &head);
         }
     }
@@ -425,6 +397,19 @@ error_pcre:
     return (-1);
 }
 
+int
+plugin_provides_update(void)
+{
+    return plugin_fetch_file();
+}
+
+int cb_event(void *data, struct pkgdb *db) {
+    struct pkg_event *ev = data;
+    if (ev->type == PKG_EVENT_INCREMENTAL_UPDATE) {
+        plugin_provides_update();
+    }
+    return (EPKG_OK);
+}
 
 int
 plugin_provides_callback(int argc, char **argv)
@@ -463,6 +448,21 @@ plugin_provides_callback(int argc, char **argv)
 
     return (EPKG_OK);
 }
+
+int
+pkg_plugin_init(struct pkg_plugin *p)
+{
+    self = p;
+
+    pkg_plugin_set(p, PKG_PLUGIN_NAME, myname);
+    pkg_plugin_set(p, PKG_PLUGIN_VERSION, myversion);
+    pkg_plugin_set(p, PKG_PLUGIN_DESC, mydescription);
+
+    pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_EVENT, cb_event);
+
+    return (EPKG_OK);
+}
+
 
 int
 pkg_register_cmd(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv))
