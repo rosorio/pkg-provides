@@ -50,16 +50,18 @@ int mkpath(char *path);
 
 
 #define BUFLEN 4096
+#define MAX_FN_SIZE 255
 #define PKG_DB_PATH "/var/db/pkg/provides/"
+#define PKG_DB_URL  "http://pkg-provides.osorio.me/"
 
 typedef struct file_t {
-    char * name;
+    char *name;
     SLIST_ENTRY (file_t) next;
 } file_t;
 SLIST_HEAD (file_head_t, file_t);
 
 typedef struct fpkg_t {
-    char * pkg_name;
+    char *pkg_name;
     struct file_head_t files;
     SLIST_ENTRY (fpkg_t) next;
 } fpkg_t;
@@ -69,7 +71,6 @@ int
 pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 {
     /* nothing to be done here */
-
     return (EPKG_OK);
 }
 
@@ -80,8 +81,37 @@ plugin_provides_usage(void)
     fprintf(stderr, "%s\n", mydescription);
 }
 
+int get_filename(char *filename)
+{
+    char arch_full[256];
+    char *word, *brkt;
+    char *sep = ":";
+    int counter = 0;
+
+    if (pkg_get_myarch(arch_full,256) != EPKG_OK) {
+        return (-1);
+    }
+
+    strcpy(filename,"pkg:");
+    for (word = strtok_r(arch_full, sep, &brkt);
+         word;
+         word = strtok_r(NULL, sep, &brkt)) {
+        switch (counter) {
+        case 2:
+            strcat(filename, ":");
+        case 1:
+            strcat(filename, word);
+            break;
+        }
+        counter++;
+    }
+    strcat(filename,".db");
+
+    return (0);
+}
+
 int
-plugin_archive_extract(int fd, const char * out)
+plugin_archive_extract(int fd, const char *out)
 {
 
     struct archive_entry *ae = NULL;
@@ -125,7 +155,7 @@ int
 plugin_fetch_file(void)
 {
     char buffer[BUFLEN];
-    FILE * fi;
+    FILE *fi;
     int fo, ft;
     int count;
     struct url_stat us;
@@ -133,8 +163,16 @@ plugin_fetch_file(void)
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
     struct stat sb;
     char path[] =PKG_DB_PATH;
+    char filename[MAX_FN_SIZE];
+    char url[MAXPATHLEN];
 
-    ft = open(PKG_DB_PATH "provides.db", O_RDWR);
+    if(get_filename(filename) != 0) {
+        fprintf(stderr,"Can't get the OS ABI\n");
+        return (-1);
+    }
+
+    sprintf(url, "%s%s.xz", PKG_DB_URL, filename);
+    ft = open( PKG_DB_PATH "provides.db", O_RDWR);
     if (ft < 0) {
         if (errno == ENOENT) {
 	    if (mkpath(path) == 0) {
@@ -153,7 +191,7 @@ plugin_fetch_file(void)
             return (-1);
         }
         close(ft);
-        if(fetchStatURL("http://pkgtool.osorio.me/ports.db.xz", &us, "") != 0) {
+        if(fetchStatURL(url, &us, "") != 0) {
             fprintf(stderr,"fetchStatURL error\n");
             return -1;
         }
@@ -169,7 +207,7 @@ plugin_fetch_file(void)
         goto error;
     }
 
-    fi = fetchXGetURL("http://pkgtool.osorio.me/ports.db.xz", &us, "");
+    fi = fetchXGetURL(url, &us, "");
     if (fi == NULL) {
         goto error;
     }
@@ -219,7 +257,7 @@ error:
 }
 
 static void
-free_list(struct pkg_head_t * head) {
+free_list(struct pkg_head_t *head) {
     fpkg_t *pnode, *prev_n;
     file_t *pfile, *prev_f;
 
@@ -243,15 +281,15 @@ free_list(struct pkg_head_t * head) {
 }
 
 static int
-display_per_repo(char * repo_name, struct pkg_head_t *head)
+display_per_repo(char *repo_name, struct pkg_head_t *head)
 {
     struct pkgdb_it *it;
     struct pkg *pkg = NULL;
     const char *name, *version, *comment;
-    struct pkg_repo * r = NULL;
+    struct pkg_repo *r = NULL;
     struct pkgdb *db = NULL;
-    fpkg_t * pnode;
-    file_t * pfile;
+    fpkg_t *pnode;
+    file_t *pfile;
 
     int ret ;
 
@@ -272,7 +310,8 @@ display_per_repo(char * repo_name, struct pkg_head_t *head)
         }
 
         pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_COMMENT, &comment);
-        printf("%s-%s : %s\n", name, version, comment);
+        printf("Name    : %s-%s\n", name, version);
+        printf("Desc    : %s\n", comment);
         printf("Repo    : %s\n", repo_name);
 
 
@@ -294,18 +333,18 @@ display_per_repo(char * repo_name, struct pkg_head_t *head)
 }
 
 int
-plugin_provides_search(char * pattern)
+plugin_provides_search(char *pattern)
 {
-    FILE * fh;
+    FILE *fh;
     char line[BUFLEN];
     int pcreErrorOffset;
     const char *pcreErrorStr;
-    pcre * pcre;
+    pcre *pcre;
     struct pkg_head_t head;
     char *repo_name;
     struct pkg_repo *r = NULL;
-    fpkg_t * pnode;
-    file_t * pfile;
+    fpkg_t *pnode;
+    file_t *pfile;
 
     SLIST_INIT (&head);
 
@@ -333,7 +372,7 @@ plugin_provides_search(char * pattern)
             }
         }
 
-        char * sep = strstr(line,"*");
+        char *sep = strstr(line,"*");
         if(sep != NULL) {
             *sep = 0;
             char *test;
