@@ -35,10 +35,11 @@
 #include <archive_entry.h>
 #include <pcre.h>
 #include <libgen.h>
+#include <sys/sysctl.h>
 #include <sys/queue.h>
 
 static char myname[] = "provides";
-static char myversion[] = "0.1.0";
+static char myversion[] = "0.3.0";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
 bool force_flag = false;
@@ -81,31 +82,29 @@ plugin_provides_usage(void)
     fprintf(stderr, "%s\n", mydescription);
 }
 
-int get_filename(char *filename)
+int get_filename(char *filename, size_t size)
 {
-    char arch_full[256];
-    char *word, *brkt;
-    char *sep = ":";
-    int counter = 0;
+    char osver[256];
+    int mib[] = { (CTL_HW), (HW_MACHINE_ARCH) };
+    static char buf[1024];
+    size_t len;
+    int v;
 
-    if (pkg_get_myarch(arch_full,256) != EPKG_OK) {
+    sprintf(osver, "%d", pkg_object_int(pkg_config_get("OSVERSION")));
+    if (strlen(osver) > 2) {
+        osver[strlen(osver)-5] = 0;
+    } else {
         return (-1);
     }
 
-    strcpy(filename,"pkg:");
-    for (word = strtok_r(arch_full, sep, &brkt);
-         word;
-         word = strtok_r(NULL, sep, &brkt)) {
-        switch (counter) {
-        case 2:
-            strcat(filename, ":");
-        case 1:
-            strcat(filename, word);
-            break;
-        }
-        counter++;
+    len = sizeof buf;
+    if (sysctl(mib, 2, &buf, &len, NULL, 0) == -1) {
+        return -1;
     }
-    strcat(filename,".db");
+
+    if(snprintf(filename, size, "pkg:%s:%s.db",osver, buf) < 0) {
+        return -1;
+    }
 
     return (0);
 }
@@ -163,10 +162,10 @@ plugin_fetch_file(void)
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
     struct stat sb;
     char path[] =PKG_DB_PATH;
-    char filename[MAX_FN_SIZE];
+    char filename[MAX_FN_SIZE + 1];
     char url[MAXPATHLEN];
 
-    if(get_filename(filename) != 0) {
+    if(get_filename(filename, MAX_FN_SIZE) != 0) {
         fprintf(stderr,"Can't get the OS ABI\n");
         return (-1);
     }
@@ -175,9 +174,9 @@ plugin_fetch_file(void)
     ft = open( PKG_DB_PATH "provides.db", O_RDWR);
     if (ft < 0) {
         if (errno == ENOENT) {
-	    if (mkpath(path) == 0) {
+            if (mkpath(path) == 0) {
                 ft = open(PKG_DB_PATH "provides.db", O_RDWR | O_CREAT);
-	    }
+	        }
         }
         if (ft < 0) {
             fprintf(stderr,"Insufficient privileges to update the provides database.\n");
