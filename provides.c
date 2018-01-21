@@ -350,7 +350,7 @@ plugin_provides_search(char *pattern)
 
     fh = fopen(PKG_DB_PATH "provides.db","rb");
     if (fh == NULL) {
-        fprintf(stderr, "Provides database not found, please update before;\n");
+        fprintf(stderr, "Provides database not found, please update before.\n");
         return (-1);
     }
 
