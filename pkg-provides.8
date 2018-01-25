@@ -1,0 +1,62 @@
+.\"
+.\" Copyright (c) 2018 Rodrigo Osorio <rodrigo@FreeBSD.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd January 25, 2018
+.Dt PKG-PROVIDES 8
+.Os
+.Sh NAME
+.Nm pkg provides
+query which package provides a file with a particular pattern
+.Sh SYNOPSIS
+.Nm
+.Op Fl u
+.Op Fl f
+.Nm
+.Ar pattern
+.Sh DESCRIPTION
+.Nm
+is used to query which package in your pkg catalog provides a particular
+file given pattern.
+.Pp
+The search pattern can be any perl compatible regular expression (PCRE).
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width repository
+.It Fl u
+Check if a new database file is available and then performs the update.
+.It Fl f
+Forces the update.
+.It Sy pattern
+Can be any perl compatible regular expression (PCRE). The search is not case sensitive.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Update the provides database:
+.Pp
+.Dl $ pkg provides -u
+.Pp
+Search which package provides bin/firefox
+.Pp
+.Dl $ pkg provides bin/firefox$
+.Pp
+Search which packages provides a file with the pattern libbz2.so.*
+.Pp
+.Dl $ pkg provides ^libbz2.so.
+.Pp
+.Sh AUTHORS
+.An -nosplit
+.Nm
+.An was written by Rodrigo Osorio <rodrigo@FreeBSD.org>.

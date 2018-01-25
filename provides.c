@@ -78,7 +78,7 @@ pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 void
 plugin_provides_usage(void)
 {
-    fprintf(stderr, "usage: pkg %s [-u]\n\n", myname);
+    fprintf(stderr, "usage: pkg %s [-uf] pattern\n\n", myname);
     fprintf(stderr, "%s\n", mydescription);
 }
 
