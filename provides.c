@@ -84,13 +84,23 @@ plugin_provides_usage(void)
 
 int get_filename(char *filename, size_t size)
 {
-    char osver[256];
-    int mib[] = { (CTL_HW), (HW_MACHINE_ARCH) };
+    char osver[1024];
+    int mib_arch[] = { (CTL_HW), (HW_MACHINE_ARCH) };
+    int mib_ver[] = { (KERN_OSTYPE), (KERN_OSRELDATE) };
     static char buf[1024];
     size_t len;
     int v;
 
-    sprintf(osver, "%d", pkg_object_int(pkg_config_get("OSVERSION")));
+    v = pkg_object_int(pkg_config_get("OSVERSION"));
+    if (v == 0) {
+        len = sizeof osver;
+        if (sysctl(mib_ver, 2, &v, &len, NULL, 0) == -1) {
+            return (-1);
+        }
+    }
+
+    sprintf(osver, "%d", v);
+
     if (strlen(osver) > 2) {
         osver[strlen(osver)-5] = 0;
     } else {
@@ -98,7 +108,7 @@ int get_filename(char *filename, size_t size)
     }
 
     len = sizeof buf;
-    if (sysctl(mib, 2, &buf, &len, NULL, 0) == -1) {
+    if (sysctl(mib_arch, 2, &buf, &len, NULL, 0) == -1) {
         return -1;
     }
 
@@ -191,7 +201,7 @@ plugin_fetch_file(void)
         }
         close(ft);
         if(fetchStatURL(url, &us, "") != 0) {
-            fprintf(stderr,"fetchStatURL error\n");
+            fprintf(stderr,"fetchStatURL error : %s\n",url);
             return -1;
         }
         if(us.mtime < sb.st_mtim.tv_sec && (!force_flag)) {
