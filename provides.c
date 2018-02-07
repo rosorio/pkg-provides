@@ -39,7 +39,7 @@
 #include <sys/queue.h>
 
 static char myname[] = "provides";
-static char myversion[] = "0.3.1";
+static char myversion[] = "0.4.0";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
 bool force_flag = false;
@@ -82,14 +82,22 @@ plugin_provides_usage(void)
     fprintf(stderr, "%s\n", mydescription);
 }
 
-int get_filename(char *filename, size_t size)
+int get_filepath(char *filename, size_t size)
 {
-    char osver[1024];
+    static char osver[1024];
+    static char arch[1024];
+    static char osname[1024];
     int mib_arch[] = { (CTL_HW), (HW_MACHINE_ARCH) };
     int mib_ver[] = { (KERN_OSTYPE), (KERN_OSRELDATE) };
-    static char buf[1024];
+    int mib_os[] = { (KERN_OSTYPE), (KERN_OSTYPE) };
     size_t len;
     int v;
+
+
+    len = sizeof osname;
+    if (sysctl(mib_os, 2, &osname, &len, NULL, 0) == -1) {
+        return -1;
+    }
 
     v = pkg_object_int(pkg_config_get("OSVERSION"));
     if (v == 0) {
@@ -107,12 +115,12 @@ int get_filename(char *filename, size_t size)
         return (-1);
     }
 
-    len = sizeof buf;
-    if (sysctl(mib_arch, 2, &buf, &len, NULL, 0) == -1) {
+    len = sizeof arch;
+    if (sysctl(mib_arch, 2, &arch, &len, NULL, 0) == -1) {
         return -1;
     }
 
-    if(snprintf(filename, size, "pkg:%s:%s.db",osver, buf) < 0) {
+    if(snprintf(filename, size, "%s/%s:%s",osname,osver, arch) < 0) {
         return -1;
     }
 
@@ -172,15 +180,15 @@ plugin_fetch_file(void)
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
     struct stat sb;
     char path[] =PKG_DB_PATH;
-    char filename[MAX_FN_SIZE + 1];
+    char filepath[MAX_FN_SIZE + 1];
     char url[MAXPATHLEN];
 
-    if(get_filename(filename, MAX_FN_SIZE) != 0) {
+    if(get_filepath(filepath, MAX_FN_SIZE) != 0) {
         fprintf(stderr,"Can't get the OS ABI\n");
         return (-1);
     }
 
-    sprintf(url, "%s%s.xz", PKG_DB_URL, filename);
+    sprintf(url, "%s%s/provides.db.xz", PKG_DB_URL, filepath);
     ft = open( PKG_DB_PATH "provides.db", O_RDWR);
     if (ft < 0) {
         if (errno == ENOENT) {
@@ -206,7 +214,7 @@ plugin_fetch_file(void)
         }
         if(us.mtime < sb.st_mtim.tv_sec && (!force_flag)) {
             printf("The provides database is up to date.\n");
-            return 0;
+            return (0);
         }
     }
     close(ft);
@@ -349,6 +357,7 @@ plugin_provides_search(char *pattern)
     int pcreErrorOffset;
     const char *pcreErrorStr;
     pcre *pcre;
+    pcre_extra *pcreExtra;
     struct pkg_head_t head;
     char *repo_name;
     struct pkg_repo *r = NULL;
@@ -366,6 +375,13 @@ plugin_provides_search(char *pattern)
     pcre = pcre_compile(pattern, 0, &pcreErrorStr, &pcreErrorOffset, NULL);
 
     if(pcre == NULL) {
+        fprintf(stderr, "Invalid serach pattern\n");
+        goto error_pcre;
+    }
+
+    pcreExtra = pcre_study(pcre, 0, &pcreErrorStr);
+
+    if(pcreExtra == NULL) {
         fprintf(stderr, "Invalid serach pattern\n");
         goto error_pcre;
     }
@@ -393,7 +409,7 @@ plugin_provides_search(char *pattern)
                 test = basename(sep);
             }
 
-            if (pcre_exec(pcre, NULL, test, strlen(test), 0, 0, NULL, 0) >= 0) {
+            if (pcre_exec(pcre, pcreExtra, test, strlen(test), 0, 0, NULL, 0) >= 0) {
                 int found = 0;
                 SLIST_FOREACH(pnode,&head, next) {
                     if(strcmp(pnode->pkg_name, line)==0) {
@@ -438,23 +454,23 @@ plugin_provides_search(char *pattern)
     fclose(fh);
     pcre_free(pcre);
     free_list(&head);
+    pcre_free(pcreExtra);
 
 error_pcre:
     fclose(fh);
-    pcre_free(pcre);
+    if (pcre != NULL) {
+        pcre_free(pcre);
+    }
+    if (pcreExtra != NULL) {
+        pcre_free(pcreExtra);
+    }
     return (-1);
-}
-
-int
-plugin_provides_update(void)
-{
-    return plugin_fetch_file();
 }
 
 int cb_event(void *data, struct pkgdb *db) {
     struct pkg_event *ev = data;
     if (ev->type == PKG_EVENT_INCREMENTAL_UPDATE) {
-        plugin_provides_update();
+        plugin_fetch_file();
     }
     return (EPKG_OK);
 }
@@ -481,7 +497,7 @@ plugin_provides_callback(int argc, char **argv)
     }
 
     if (do_update) {
-        return plugin_provides_update();
+        return plugin_fetch_file();
     }
 
     argc -= optind;
