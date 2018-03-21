@@ -44,10 +44,14 @@ static char mydescription[] = "A plugin for querying which package provides a pa
 static struct pkg_plugin *self;
 bool force_flag = false;
 
+bool fetch_on_update = true;
+
 void provides_progressbar_start(const char *pmsg);
 void provides_progressbar_stop(void);
 void provides_progressbar_tick(int64_t current, int64_t total);
 int mkpath(char *path);
+
+int config_fetch_on_update();
 
 
 #define BUFLEN 4096
@@ -469,7 +473,7 @@ error_pcre:
 
 int cb_event(void *data, struct pkgdb *db) {
     struct pkg_event *ev = data;
-    if (ev->type == PKG_EVENT_INCREMENTAL_UPDATE) {
+    if (ev->type == PKG_EVENT_INCREMENTAL_UPDATE && fetch_on_update) {
         plugin_fetch_file();
     }
     return (EPKG_OK);
@@ -523,6 +527,8 @@ pkg_plugin_init(struct pkg_plugin *p)
     pkg_plugin_set(p, PKG_PLUGIN_DESC, mydescription);
 
     pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_EVENT, cb_event);
+
+    fetch_on_update = config_fetch_on_update() ? true : false;
 
     return (EPKG_OK);
 }
