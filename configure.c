@@ -25,29 +25,13 @@
  */
 
 #include <stdlib.h>
-
-int
-stricmp(char *s1, char *s2)
-{
-    while (1) {
-        if (toupper(*s1) != toupper(*s2)) {
-            return 1;
-        }
-
-        if(*s1  == '\0') {
-            return (0);
-        }
-
-        s1++;
-        s2++;
-    }
-}
+#include <strings.h>
 
 int
 config_fetch_on_update()
 {
     const char * str = getenv("PROVIDES_FETCH_ON_UPDATE");
-    if (str != NULL && stricmp(str,"no") == 0) {
+    if (str != NULL && strcasecmp(str,"no") == 0) {
         return (0);
     }
 
