@@ -29,6 +29,7 @@
 #include <pkg.h>
 #include <fetch.h>
 #include <errno.h>
+#include <strings.h>
 #include <archive.h>
 #include <fcntl.h>
 #include <string.h>
@@ -58,6 +59,7 @@ int config_fetch_on_update();
 #define MAX_FN_SIZE 255
 #define PKG_DB_PATH "/var/db/pkg/provides/"
 #define PKG_DB_URL  "http://pkg-provides.osorio.me/"
+#define DRAGONFLY_OS_NAME "DragonFly"
 
 typedef struct file_t {
     char *name;
@@ -113,10 +115,18 @@ int get_filepath(char *filename, size_t size)
 
     sprintf(osver, "%d", v);
 
-    if (strlen(osver) > 2) {
-        osver[strlen(osver)-5] = 0;
+    if (strcasecmp(osname, DRAGONFLY_OS_NAME) == 0) {
+        if (strlen(osver) >= 3) {
+            osver[strlen(osver)-3] = 0;
+        } else {
+            return (-1);
+        }
     } else {
-        return (-1);
+        if (strlen(osver) >= 5) {
+            osver[strlen(osver)-5] = 0;
+        } else {
+            return (-1);
+        }
     }
 
     len = sizeof arch;
