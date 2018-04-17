@@ -17,8 +17,8 @@
 .Dt PKG-PROVIDES 8
 .Os
 .Sh NAME
-.Nm pkg provides
-query which package provides a file with a particular pattern
+.Nm "pkg provides"
+.Nd query which package provides a file matching a particular pattern
 .Sh SYNOPSIS
 .Nm
 .Op Fl u
@@ -28,7 +28,7 @@ query which package provides a file with a particular pattern
 .Sh DESCRIPTION
 .Nm
 is used to query which package in your pkg catalog provides a particular
-file given pattern.
+file given a pattern.
 .Pp
 The search pattern can be any perl compatible regular expression (PCRE).
 .Sh OPTIONS
@@ -36,9 +36,9 @@ The following options are supported by
 .Nm :
 .Bl -tag -width repository
 .It Fl u
-Check if a new database file is available and then performs the update.
+Check if a new database file is available and then perform the update.
 .It Fl f
-Forces the update.
+Force the update.
 .It Sy pattern
 Can be any perl compatible regular expression (PCRE). The search is not case sensitive.
 .Sh EXIT STATUS
@@ -46,7 +46,7 @@ Can be any perl compatible regular expression (PCRE). The search is not case sen
 .Sh ENVIRONMENT
 .Bl -tag -width "PROVIDES_FETCH_ON_UPDATE"
 .It PROVIDES_FETCH_ON_UPDATE
-If set to "NO", it disables the default behaviour and don't perform a
+If set to "NO", it disables the default behaviour and doesn't perform a
 .Nm
 database update after updating pkg.
 .Sh EXAMPLES
@@ -54,11 +54,11 @@ Update the provides database:
 .Pp
 .Dl $ pkg provides -u
 .Pp
-Search which package provides bin/firefox
+Search for a package that provides bin/firefox
 .Pp
 .Dl $ pkg provides bin/firefox$
 .Pp
-Search which packages provides a file with the pattern libbz2.so.*
+Search for packages that provide a file with the pattern libbz2.so.*
 .Pp
 .Dl $ pkg provides ^libbz2.so.
 .Pp

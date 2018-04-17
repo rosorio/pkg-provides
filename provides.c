@@ -227,7 +227,7 @@ plugin_fetch_file(void)
             return -1;
         }
         if(us.mtime < sb.st_mtim.tv_sec && (!force_flag)) {
-            printf("The provides database is up to date.\n");
+            printf("The provides database is up-to-date.\n");
             return (0);
         }
     }
@@ -243,7 +243,7 @@ plugin_fetch_file(void)
         goto error;
     }
 
-    provides_progressbar_start("Feching provides database");
+    provides_progressbar_start("Fetching provides database");
     provides_progressbar_tick(size,us.size);
     while ((count = fread(buffer, 1, BUFLEN, fi)) > 0) {
         if(write(fo, buffer, count) != count) {
@@ -382,21 +382,21 @@ plugin_provides_search(char *pattern)
 
     fh = fopen(PKG_DB_PATH "provides.db","rb");
     if (fh == NULL) {
-        fprintf(stderr, "Provides database not found, please update before.\n");
+        fprintf(stderr, "Provides database not found, please update first.\n");
         return (-1);
     }
 
     pcre = pcre_compile(pattern, 0, &pcreErrorStr, &pcreErrorOffset, NULL);
 
     if(pcre == NULL) {
-        fprintf(stderr, "Invalid serach pattern\n");
+        fprintf(stderr, "Invalid search pattern\n");
         goto error_pcre;
     }
 
     pcreExtra = pcre_study(pcre, 0, &pcreErrorStr);
 
     if(pcreExtra == NULL) {
-        fprintf(stderr, "Invalid serach pattern\n");
+        fprintf(stderr, "Invalid search pattern\n");
         goto error_pcre;
     }
 
