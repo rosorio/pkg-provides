@@ -40,7 +40,7 @@
 #include <sys/queue.h>
 
 static char myname[] = "provides";
-static char myversion[] = "0.4.1";
+static char myversion[] = "0.4.2";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
 bool force_flag = false;
@@ -59,7 +59,6 @@ int config_fetch_on_update();
 #define MAX_FN_SIZE 255
 #define PKG_DB_PATH "/var/db/pkg/provides/"
 #define PKG_DB_URL  "http://pkg-provides.osorio.me/"
-#define DRAGONFLY_OS_NAME "DragonFly"
 
 typedef struct file_t {
     char *name;
@@ -94,10 +93,15 @@ int get_filepath(char *filename, size_t size)
     static char arch[1024];
     static char osname[1024];
     int mib_arch[] = { (CTL_HW), (HW_MACHINE_ARCH) };
-    int mib_ver[] = { (KERN_OSTYPE), (KERN_OSRELDATE) };
+    int mib_ver[] = { (KERN_OSTYPE), (KERN_OSRELEASE) };
     int mib_os[] = { (KERN_OSTYPE), (KERN_OSTYPE) };
     size_t len;
-    int v;
+    char * ptr;
+#ifdef __FreeBSD__
+    char sep[] = ".";
+#else
+    char sep[] = "-";
+#endif
 
 
     len = sizeof osname;
@@ -105,34 +109,27 @@ int get_filepath(char *filename, size_t size)
         return -1;
     }
 
-    v = pkg_object_int(pkg_config_get("OSVERSION"));
-    if (v == 0) {
-        len = sizeof osver;
-        if (sysctl(mib_ver, 2, &v, &len, NULL, 0) == -1) {
-            return (-1);
-        }
+    len = sizeof osver;
+    if (sysctl(mib_ver, 2, &osver, &len, NULL, 0) == -1) {
+        return (-1);
     }
 
-    sprintf(osver, "%d", v);
-
-    if (strcasecmp(osname, DRAGONFLY_OS_NAME) == 0) {
-        if (strlen(osver) >= 3) {
-            osver[strlen(osver)-3] = 0;
-        } else {
-            return (-1);
-        }
+    ptr = strstr(osver, sep);
+    if (ptr == NULL) {
+        return (-1);
     } else {
-        if (strlen(osver) >= 5) {
-            osver[strlen(osver)-5] = 0;
-        } else {
-            return (-1);
-        }
+        ptr[0] = '\0';
     }
 
     len = sizeof arch;
     if (sysctl(mib_arch, 2, &arch, &len, NULL, 0) == -1) {
         return -1;
     }
+#ifndef __FreeBSD__
+    if ((ptr = strstr(arch, "_")) != NULL) {
+        ptr[0] = ':';
+    }
+#endif
 
     if(snprintf(filename, size, "%s/%s:%s",osname,osver, arch) < 0) {
         return -1;
