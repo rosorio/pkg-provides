@@ -58,7 +58,7 @@ int config_fetch_on_update();
 #define BUFLEN 4096
 #define MAX_FN_SIZE 255
 #define PKG_DB_PATH "/var/db/pkg/provides/"
-#define PKG_DB_URL  "http://pkg-provides.osorio.me/"
+#define PKG_DB_URL  "https://pkg-provides.osorio.me/"
 
 typedef struct file_t {
     char *name;
