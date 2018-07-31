@@ -24,8 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <errno.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
+
+#define PKG_DB_URL  "https://pkg-provides.osorio.me"
+
+static char * url = NULL;
 
 int
 config_fetch_on_update()
@@ -36,4 +41,19 @@ config_fetch_on_update()
     }
 
     return (1);
+}
+
+char *
+config_get_remote_url()
+{
+    const char * env;
+
+    if (url == NULL) {
+        env = getenv("PROVIDES_URL");
+        url = strdup((env != NULL) ? env : PKG_DB_URL);
+        if (url == NULL) {
+            exit(ENOMEM);
+        }
+    }
+    return (url);
 }

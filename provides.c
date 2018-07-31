@@ -53,12 +53,12 @@ void provides_progressbar_tick(int64_t current, int64_t total);
 int mkpath(char *path);
 
 int config_fetch_on_update();
+char * config_get_remote_url();
 
 
 #define BUFLEN 4096
 #define MAX_FN_SIZE 255
 #define PKG_DB_PATH "/var/db/pkg/provides/"
-#define PKG_DB_URL  "https://pkg-provides.osorio.me/"
 
 typedef struct file_t {
     char *name;
@@ -199,7 +199,7 @@ plugin_fetch_file(void)
         return (-1);
     }
 
-    sprintf(url, "%s%s/provides.db.xz", PKG_DB_URL, filepath);
+    sprintf(url, "%s/%s/provides.db.xz", config_get_remote_url(), filepath);
     ft = open( PKG_DB_PATH "provides.db", O_RDWR);
     if (ft < 0) {
         if (errno == ENOENT) {
