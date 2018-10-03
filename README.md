@@ -1,5 +1,8 @@
+
 # pkg-provides
 pkgng plugin for querying which package provides a particular file
+
+# Since february 2018, pkg-provides can be installed from FreeBSD and DragonFlyBSD packages.
 
 [![asciicast](https://asciinema.org/a/funEHTv8VYyD5MBZzU9XGRwiS.png)](https://asciinema.org/a/funEHTv8VYyD5MBZzU9XGRwiS)
 
@@ -26,16 +29,17 @@ pkgng plugin for querying which package provides a particular file
 ## Configure pkg to use plugins
 
 /usr/local/etc/pkg.conf
+
+
 ```
-PKG_PLUGINS_DIR = "/usr/local/lib/pkg/plugins";
+PKG_PLUGINS_DIR = "/usr/local/lib/pkg/";
 PKG_ENABLE_PLUGINS = true;
 PLUGINS [ provides ]
-PLUGINS_CONF_DIR = "/usr/local/etc/pkg/plugins";
 ```
 Create the directory to store the provides database :
 
 ```
-    mkdir -p /var/db/pkg/plugins
+    mkdir -p /var/db/pkg/provides
 ```
 
 ## Check if the plugin is available 
@@ -60,9 +64,4 @@ Search for a file
   pkg provides bin/firefox
 ```
 You can use the perl regexp in search requests
-
-# TODO
-
-- provides uses the AMD64-latest ports, future versions will use the ABI
-- database is downloaded in /var/tmp and stored in /var/db/pkg/plugins/. The location is hardcoded. 
 
