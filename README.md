@@ -1,6 +1,6 @@
 
 # pkg-provides
-pkgng plugin for querying which package provides a particular file
+pkgng plugin for querying which package will provide you a particular file
 
 # Since february 2018, pkg-provides can be installed from FreeBSD and DragonFlyBSD packages.
 
