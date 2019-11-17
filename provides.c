@@ -40,7 +40,7 @@
 #include <sys/queue.h>
 
 static char myname[] = "provides";
-static char myversion[] = "0.5.0";
+static char myversion[] = "0.6.0";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
 bool force_flag = false;
@@ -51,7 +51,7 @@ void provides_progressbar_start(const char *pmsg);
 void provides_progressbar_stop(void);
 void provides_progressbar_tick(int64_t current, int64_t total);
 int mkpath(char *path);
-int bigram_expand(FILE *fp, int (*match_cb)(char *,void *), void *extra);
+int bigram_expand(FILE *fp, void (*match_cb)(char *,struct search_t *), void *extra);
 
 int config_fetch_on_update();
 char * config_get_remote_url();
