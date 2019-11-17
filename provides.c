@@ -51,6 +51,7 @@ void provides_progressbar_start(const char *pmsg);
 void provides_progressbar_stop(void);
 void provides_progressbar_tick(int64_t current, int64_t total);
 int mkpath(char *path);
+int bigram_expand(FILE *fp, int (*match_cb)(char *,void *), void *extra);
 
 int config_fetch_on_update();
 char * config_get_remote_url();
@@ -72,6 +73,14 @@ typedef struct fpkg_t {
     SLIST_ENTRY (fpkg_t) next;
 } fpkg_t;
 SLIST_HEAD (pkg_head_t, fpkg_t);
+
+struct search_t {
+    struct pkg_head_t head;
+    pcre *pcre;
+    pcre_extra *pcreExtra;
+    fpkg_t *pnode;
+    char * pattern;
+};
 
 int
 pkg_plugin_shutdown(struct pkg_plugin *p __unused)
@@ -360,120 +369,118 @@ display_per_repo(char *repo_name, struct pkg_head_t *head)
     return (0);
 }
 
+void
+match_cb(char * line, struct search_t *search)
+{
+    file_t *pfile;
+    fpkg_t *pnode;
+
+    printf("%s\n", line);
+    char *sep = strstr(line,"*");
+    if(sep != NULL) {
+        *sep = 0;
+        char *test;
+        sep++;
+
+        if(strstr(search->pattern,"/")) {
+            test = sep;
+        } else {
+            test = basename(sep);
+        }
+
+        if (pcre_exec(search->pcre, search->pcreExtra, test, strlen(test), 0, 0, NULL, 0) >= 0) {
+            int found = 0;
+            SLIST_FOREACH(pnode,&(search->head), next) {
+                if(strcmp(pnode->pkg_name, line)==0) {
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (found == 0) {
+                pnode = malloc (sizeof(struct fpkg_t));
+                if (pnode == NULL) {
+                    exit(ENOMEM);
+                } else {
+                    pnode->pkg_name = strdup(line);
+                    if(pnode->pkg_name == NULL) {
+                        exit(ENOMEM);
+                    }
+                    SLIST_INIT (&(pnode->files));
+                }
+                SLIST_INSERT_HEAD(&(search->head),pnode,next);
+            }
+            pfile = malloc(sizeof(struct file_t));
+            if(pfile == NULL) {
+                exit(ENOMEM);
+            }
+            pfile->name = strdup(sep);
+            if(pfile->name == NULL) {
+                exit(ENOMEM);
+            }
+            SLIST_INSERT_HEAD(&pnode->files,pfile,next);
+        }
+    }
+}
+
 int
 plugin_provides_search(char *pattern)
 {
     FILE *fh;
-    char line[BUFLEN];
     int pcreErrorOffset;
     const char *pcreErrorStr;
-    pcre *pcre;
-    pcre_extra *pcreExtra;
-    struct pkg_head_t head;
     char *repo_name;
     struct pkg_repo *r = NULL;
-    fpkg_t *pnode;
-    file_t *pfile;
 
-    SLIST_INIT (&head);
+    struct search_t search;
 
-    fh = fopen(PKG_DB_PATH "provides.db","rb");
+    search.pattern = pattern;
+
+    SLIST_INIT (&search.head);
+
+    fh = fopen(PKG_DB_PATH "provides.db","r");
     if (fh == NULL) {
         fprintf(stderr, "Provides database not found, please update first.\n");
         return (-1);
     }
 
-    pcre = pcre_compile(pattern, 0, &pcreErrorStr, &pcreErrorOffset, NULL);
+    search.pcre = pcre_compile(pattern, 0, &pcreErrorStr, &pcreErrorOffset, NULL);
 
-    if(pcre == NULL) {
+    if(search.pcre == NULL) {
         fprintf(stderr, "Invalid search pattern\n");
         goto error_pcre;
     }
 
-    pcreExtra = pcre_study(pcre, 0, &pcreErrorStr);
+    search.pcreExtra = pcre_study(search.pcre, 0, &pcreErrorStr);
 
-    if(pcreExtra == NULL) {
+    if(search.pcreExtra == NULL) {
         fprintf(stderr, "Invalid search pattern\n");
         goto error_pcre;
     }
 
-    while(fgets(line,BUFLEN,fh) != NULL) {
-        int match;
-        int len = strlen(line);
-        for (int i=len-1; i > 0; i--) {
-            if (line[i] == '\r' || line[i] == '\n') {
-                line[i] = 0;
-            } else {
-                break;
-            }
-        }
-
-        char *sep = strstr(line,"*");
-        if(sep != NULL) {
-            *sep = 0;
-            char *test;
-            sep++;
-
-            if(strstr(pattern,"/")) {
-                test = sep;
-            } else {
-                test = basename(sep);
-            }
-
-            if (pcre_exec(pcre, pcreExtra, test, strlen(test), 0, 0, NULL, 0) >= 0) {
-                int found = 0;
-                SLIST_FOREACH(pnode,&head, next) {
-                    if(strcmp(pnode->pkg_name, line)==0) {
-                        found = 1;
-                        break;
-                    }
-                }
-
-                if (found == 0) {
-                    pnode = malloc (sizeof(struct fpkg_t));
-                    if (pnode == NULL) {
-                        exit(ENOMEM);
-                    } else {
-                        pnode->pkg_name = strdup(line);
-                        if(pnode->pkg_name == NULL) {
-                            exit(ENOMEM);
-                        }
-                        SLIST_INIT (&(pnode->files));
-                    }
-                    SLIST_INSERT_HEAD(&head,pnode,next);
-                }
-                pfile = malloc(sizeof(struct file_t));
-                if(pfile == NULL) {
-                    exit(ENOMEM);
-                }
-                pfile->name = strdup(sep);
-                if(pfile->name == NULL) {
-                    exit(ENOMEM);
-                }
-                SLIST_INSERT_HEAD(&pnode->files,pfile,next);
-            }
-        }
+    if (bigram_expand(fh, &match_cb, &search) == -1) {
+        fprintf(stderr, "Corrupted database\n");
     }
 
     while (pkg_repos(&r) == EPKG_OK) {
         if (pkg_repo_enabled(r)) {
             repo_name = (char *)pkg_repo_name(r);
-            display_per_repo(repo_name, &head);
+            display_per_repo(repo_name, &search.head);
         }
     }
 
     fclose(fh);
-    pcre_free(pcre);
-    free_list(&head);
-    pcre_free(pcreExtra);
+    pcre_free(search.pcre);
+    pcre_free(search.pcreExtra);
+    free_list(&search.head);
 
 error_pcre:
     fclose(fh);
-    if (pcre != NULL) {
-        pcre_free(pcre);
+    if (search.pcre != NULL) {
+        pcre_free(search.pcre);
     }
-    if (pcreExtra != NULL) {
-        pcre_free(pcreExtra);
+    if (search.pcreExtra != NULL) {
+        pcre_free(search.pcreExtra);
     }
     return (-1);
 }

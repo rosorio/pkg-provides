@@ -3,7 +3,7 @@
  *
  * Copyright (c) 1995 Wolfram Schneider <wosch@FreeBSD.org>. Berlin.
  * Copyright (c) 1989, 1993
- *	The Regents of the University of California.  All rights reserved.
+ *  The Regents of the University of California.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * James A. Woods.
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ *  This product includes software developed by the University of
+ *  California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -58,17 +58,15 @@ char separator='\n';   /* line separator */
  */
 int
 check_bigram_char(ch)
-	int ch;
+    int ch;
 {
-	/* legal bigram: 0, ASCII_MIN ... ASCII_MAX */
-	if (ch == 0 ||
-	    (ch >= ASCII_MIN && ch <= ASCII_MAX))
-		return(ch);
+    /* legal bigram: 0, ASCII_MIN ... ASCII_MAX */
+    if (ch == 0 ||
+        (ch >= ASCII_MIN && ch <= ASCII_MAX))
+        return(ch);
 
-	errx(1,
-		"locate database header corrupt, bigram char outside 0, %d-%d: %d",  
-		ASCII_MIN, ASCII_MAX, ch);
-	exit(1);
+    fprintf(stderr, "Provides database corrupted, perform a forced update to correct it.\n");
+    exit (1);
 }
 
 /*
@@ -83,27 +81,29 @@ check_bigram_char(ch)
 
 int
 getwm(p)
-	caddr_t p;
+    caddr_t p;
 {
-	union {
-		char buf[INTSIZE];
-		int i;
-	} u;
-	register int i, hi;
+    union {
+        char buf[INTSIZE];
+        int i;
+    } u;
+    register int i, hi;
 
-	for (i = 0; i < (int)INTSIZE; i++)
-		u.buf[i] = *p++;
+    for (i = 0; i < (int)INTSIZE; i++)
+        u.buf[i] = *p++;
 
-	i = u.i;
+    i = u.i;
 
-	if (i > MAXPATHLEN || i < -(MAXPATHLEN)) {
-		hi = ntohl(i);
-		if (hi > MAXPATHLEN || hi < -(MAXPATHLEN))
-			errx(1, "integer out of +-MAXPATHLEN (%d): %u",
-			    MAXPATHLEN, abs(i) < abs(hi) ? i : hi);
-		return(hi);
-	}
-	return(i);
+    if (i > MAXPATHLEN || i < -(MAXPATHLEN)) {
+        hi = ntohl(i);
+        if (hi > MAXPATHLEN || hi < -(MAXPATHLEN)) {
+            fprintf(stderr, "integer out of +-MAXPATHLEN (%d): %u",
+                    MAXPATHLEN, abs(i) < abs(hi) ? i : hi);
+            exit (1);
+        }
+        return(hi);
+    }
+    return(i);
 }
 
 /*
@@ -116,90 +116,89 @@ getwm(p)
 
 int
 getwf(fp)
-	FILE *fp;
+    FILE *fp;
 {
-	register int word, hword;
+    register int word, hword;
 
-	word = getw(fp);
+    word = getw(fp);
 
-	if (word > MAXPATHLEN || word < -(MAXPATHLEN)) {
-		hword = ntohl(word);
-		if (hword > MAXPATHLEN || hword < -(MAXPATHLEN))
-			errx(1, "integer out of +-MAXPATHLEN (%d): %u",
-			    MAXPATHLEN, abs(word) < abs(hword) ? word : hword);
-		return(hword);
-	}
-	return(word);
+    if (word > MAXPATHLEN || word < -(MAXPATHLEN)) {
+        hword = ntohl(word);
+        if (hword > MAXPATHLEN || hword < -(MAXPATHLEN))
+            errx(1, "integer out of +-MAXPATHLEN (%d): %u",
+                MAXPATHLEN, abs(word) < abs(hword) ? word : hword);
+        return(hword);
+    }
+    return(word);
 }
 
-void bigram_list
-(fp, database)
-	FILE *fp;               /* open database */
-	char *database;		/* for error message */
+int
+bigram_expand(FILE *fp, int (*match_cb)(char *,void *), void * extra)
 {
-	register u_char *p, *s;
-	register int c;
-	int count, found, globflag;
-	u_char *cutoff;
-	u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN];
+    register u_char *p, *s;
+    register int c;
+    int count, found, globflag;
+    u_char *cutoff;
+    u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN];
 
-	/* use a lookup table for case insensitive search */
-	u_char table[UCHAR_MAX + 1];
+    /* use a lookup table for case insensitive search */
+    u_char table[UCHAR_MAX + 1];
 
-	/* init bigram table */
-	for (c = 0, p = bigram1, s = bigram2; c < NBG; c++) {
-		p[c] = check_bigram_char(getc(fp));
-		s[c] = check_bigram_char(getc(fp));
-	}
+    /* init bigram table */
+    for (c = 0, p = bigram1, s = bigram2; c < NBG; c++) {
+        p[c] = check_bigram_char(getc(fp));
+        s[c] = check_bigram_char(getc(fp));
+    }
 
-	/* main loop */
-	found = count = 0;
+    /* main loop */
+    found = count = 0;
 
-	c = getc(fp);
-	for (; c != EOF; ) {
+    c = getc(fp);
+    for (; c != EOF; ) {
 
-		/* go forward or backward */
-		if (c == SWITCH) { /* big step, an integer */
-			count +=  getwf(fp) - OFFSET;
-		} else {	   /* slow step, =< 14 chars */
-			count += c - OFFSET;
-		}
+        /* go forward or backward */
+        if (c == SWITCH) { /* big step, an integer */
+            count +=  getwf(fp) - OFFSET;
+        } else {       /* slow step, =< 14 chars */
+            count += c - OFFSET;
+        }
 
-		if (count < 0 || count > MAXPATHLEN)
-			errx(1, "corrupted database: %s", database);
-		/* overlay old path */
-		p = path + count;
+        if (count < 0 || count > MAXPATHLEN)
+            return (-1);
+        /* overlay old path */
+        p = path + count;
 
-		for (;;) {
-			c = getc(fp);
-			/*
-			 * == UMLAUT: 8 bit char followed
-			 * <= SWITCH: offset
-			 * >= PARITY: bigram
-			 * rest:      single ascii char
-			 *
-			 * offset < SWITCH < UMLAUT < ascii < PARITY < bigram
-			 */
-			if (c < PARITY) {
-				if (c <= UMLAUT) {
-					if (c == UMLAUT) {
-						c = getc(fp);
-						
-					} else
-						break; /* SWITCH */
-				}
-				*p++ = c;
-			}
-			else {		
-				/* bigrams are parity-marked */
-				TO7BIT(c);
+        for (;;) {
+            c = getc(fp);
+            /*
+             * == UMLAUT: 8 bit char followed
+             * <= SWITCH: offset
+             * >= PARITY: bigram
+             * rest:      single ascii char
+             *
+             * offset < SWITCH < UMLAUT < ascii < PARITY < bigram
+             */
+            if (c < PARITY) {
+                if (c <= UMLAUT) {
+                    if (c == UMLAUT) {
+                        c = getc(fp);
+                    } else
+                        break; /* SWITCH */
+                }
+                *p++ = c;
+            }
+            else {      
+                /* bigrams are parity-marked */
+                TO7BIT(c);
 
-				*p++ = bigram1[c];
-				*p++ = bigram2[c];
-			}
-		}
-		*p-- = '\0';
-		(void)printf("%s%c",path,separator);
-		
-	}
+                *p++ = bigram1[c];
+                *p++ = bigram2[c];
+            }
+        }
+        *p-- = '\0';
+        printf(">>>> %s\n", path);
+            match_cb(path, extra);
+    }
+
+    return (0);
 }
