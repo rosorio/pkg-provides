@@ -41,6 +41,7 @@
 
 static char myname[] = "provides";
 static char myversion[] = "0.6.0";
+static char dbversion[] = "v3";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
 bool force_flag = false;
@@ -51,7 +52,7 @@ void provides_progressbar_start(const char *pmsg);
 void provides_progressbar_stop(void);
 void provides_progressbar_tick(int64_t current, int64_t total);
 int mkpath(char *path);
-int bigram_expand(FILE *fp, void (*match_cb)(char *,struct search_t *), void *extra);
+int bigram_expand(FILE *fp, void (*match_cb)(const char *,struct search_t *), void *extra);
 
 int config_fetch_on_update();
 char * config_get_remote_url();
@@ -208,8 +209,8 @@ plugin_fetch_file(void)
         return (-1);
     }
 
-    sprintf(url, "%s/%s/provides.db.xz", config_get_remote_url(), filepath);
-    ft = open( PKG_DB_PATH "provides.db", O_RDWR);
+    sprintf(url, "%s/%s/%s/provides.db.xz", config_get_remote_url(), dbversion, filepath);
+    ft = open( PKG_DB_PATH "provides.db", O_WRONLY | O_TRUNC);
     if (ft < 0) {
         if (errno == ENOENT) {
             if (mkpath(path) == 0) {
@@ -370,28 +371,28 @@ display_per_repo(char *repo_name, struct pkg_head_t *head)
 }
 
 void
-match_cb(char * line, struct search_t *search)
+match_cb(const char * line, struct search_t *search)
 {
     file_t *pfile;
     fpkg_t *pnode;
 
-    printf("%s\n", line);
-    char *sep = strstr(line,"*");
-    if(sep != NULL) {
-        *sep = 0;
-        char *test;
-        sep++;
+    char *separator = strstr(line,"*");
+    if(separator != NULL) {
+        char *exp;
+        char * fullpath = separator + 1;
 
         if(strstr(search->pattern,"/")) {
-            test = sep;
+            exp = fullpath;
         } else {
-            test = basename(sep);
+            exp = basename(fullpath);
         }
 
-        if (pcre_exec(search->pcre, search->pcreExtra, test, strlen(test), 0, 0, NULL, 0) >= 0) {
+        if (pcre_exec(search->pcre, search->pcreExtra, exp, strlen(exp), 0, 0, NULL, 0) >= 0) {
             int found = 0;
+            char * name = strndup(line, (separator - line + 1));
+            name[separator - line] = '\0';
             SLIST_FOREACH(pnode,&(search->head), next) {
-                if(strcmp(pnode->pkg_name, line)==0) {
+                if(strcmp(pnode->pkg_name, name)==0) {
                     found = 1;
                     break;
                 }
@@ -402,19 +403,21 @@ match_cb(char * line, struct search_t *search)
                 if (pnode == NULL) {
                     exit(ENOMEM);
                 } else {
-                    pnode->pkg_name = strdup(line);
+                    pnode->pkg_name = name;
                     if(pnode->pkg_name == NULL) {
                         exit(ENOMEM);
                     }
                     SLIST_INIT (&(pnode->files));
                 }
                 SLIST_INSERT_HEAD(&(search->head),pnode,next);
+            } else {
+                free(name);
             }
             pfile = malloc(sizeof(struct file_t));
             if(pfile == NULL) {
                 exit(ENOMEM);
             }
-            pfile->name = strdup(sep);
+            pfile->name = strdup(fullpath + 1);
             if(pfile->name == NULL) {
                 exit(ENOMEM);
             }
