@@ -156,7 +156,7 @@ plugin_archive_extract(int fd, const char *out)
     struct archive *ar = NULL;
     int fd_out = -1;
 
-    fd_out = open(out, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    fd_out = open(out, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if ( fd_out < 0) {
         return -1;
     }
@@ -210,7 +210,7 @@ plugin_fetch_file(void)
     }
 
     sprintf(url, "%s/%s/%s/provides.db.xz", config_get_remote_url(), dbversion, filepath);
-    ft = open( PKG_DB_PATH "provides.db", O_WRONLY | O_TRUNC);
+    ft = open( PKG_DB_PATH "provides.db", O_WRONLY);
     if (ft < 0) {
         if (errno == ENOENT) {
             if (mkpath(path) == 0) {
