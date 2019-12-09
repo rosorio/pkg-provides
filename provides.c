@@ -447,7 +447,7 @@ plugin_provides_search(char *pattern)
         return (-1);
     }
 
-    search.pcre = pcre_compile(pattern, 0, &pcreErrorStr, &pcreErrorOffset, NULL);
+    search.pcre = pcre_compile(pattern, PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
 
     if(search.pcre == NULL) {
         fprintf(stderr, "Invalid search pattern\n");
