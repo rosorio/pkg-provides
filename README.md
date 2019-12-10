@@ -4,8 +4,6 @@ pkgng plugin for querying which package will provide you a particular file
 
 # Since february 2018, pkg-provides can be installed from FreeBSD and DragonFlyBSD packages.
 
-[![asciicast](https://asciinema.org/a/funEHTv8VYyD5MBZzU9XGRwiS.png)](https://asciinema.org/a/funEHTv8VYyD5MBZzU9XGRwiS)
-
 # How to build / install
 
 ## Requirements
