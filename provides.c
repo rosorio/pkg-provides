@@ -48,20 +48,6 @@ bool force_flag = false;
 
 bool fetch_on_update = true;
 
-void provides_progressbar_start(const char *pmsg);
-void provides_progressbar_stop(void);
-void provides_progressbar_tick(int64_t current, int64_t total);
-int mkpath(char *path);
-int bigram_expand(FILE *fp, void (*match_cb)(const char *,struct search_t *), void *extra);
-
-int config_fetch_on_update();
-char * config_get_remote_url();
-
-
-#define BUFLEN 4096
-#define MAX_FN_SIZE 255
-#define PKG_DB_PATH "/var/db/pkg/provides/"
-
 typedef struct file_t {
     char *name;
     SLIST_ENTRY (file_t) next;
@@ -82,6 +68,19 @@ struct search_t {
     fpkg_t *pnode;
     char * pattern;
 };
+
+void provides_progressbar_start(const char *pmsg);
+void provides_progressbar_stop(void);
+void provides_progressbar_tick(int64_t current, int64_t total);
+int mkpath(char *path);
+int bigram_expand(FILE *fp, void (*match_cb)(const char *,struct search_t *), void *extra);
+
+int config_fetch_on_update();
+char * config_get_remote_url();
+
+#define BUFLEN 4096
+#define MAX_FN_SIZE 255
+#define PKG_DB_PATH "/var/db/pkg/provides/"
 
 int
 pkg_plugin_shutdown(struct pkg_plugin *p __unused)
