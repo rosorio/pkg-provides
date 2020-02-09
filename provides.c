@@ -92,7 +92,7 @@ pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 void
 plugin_provides_usage(void)
 {
-    fprintf(stderr, "usage: pkg %s [-uf] pattern\n\n", myname);
+    fprintf(stderr, "usage: pkg %s [-uf] [-r repo] pattern\n\n", myname);
     fprintf(stderr, "%s\n", mydescription);
 }
 
@@ -426,7 +426,7 @@ match_cb(const char * line, struct search_t *search)
 }
 
 int
-plugin_provides_search(char *pattern)
+plugin_provides_search(char *repo, char *pattern)
 {
     FILE *fh;
     int pcreErrorOffset;
@@ -467,7 +467,9 @@ plugin_provides_search(char *pattern)
     while (pkg_repos(&r) == EPKG_OK) {
         if (pkg_repo_enabled(r)) {
             repo_name = (char *)pkg_repo_name(r);
-            display_per_repo(repo_name, &search.head);
+            if (repo == NULL || strcmp(repo, repo_name) == 0) {
+                display_per_repo(repo_name, &search.head);
+            }
         }
     }
 
@@ -500,14 +502,18 @@ plugin_provides_callback(int argc, char **argv)
 {
     char ch;
     bool do_update = false;
+    char *repo = NULL;
 
-    while ((ch = getopt(argc, argv, "uf")) != -1) {
+    while ((ch = getopt(argc, argv, "ufr:")) != -1) {
         switch (ch) {
         case 'u':
             do_update = true;
             break;
         case 'f':
             force_flag = true;
+            break;
+        case 'r':
+            repo = optarg;
             break;
         default:
             plugin_provides_usage();
@@ -528,7 +534,7 @@ plugin_provides_callback(int argc, char **argv)
         return (EX_USAGE);
     }
 
-    plugin_provides_search(argv[0]);
+    plugin_provides_search(repo, argv[0]);
 
     return (EPKG_OK);
 }
