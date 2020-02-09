@@ -165,7 +165,7 @@ plugin_archive_extract(int fd, const char *out)
         goto error;
     }
 
-    archive_read_support_compression_all(ar);
+    archive_read_support_filter_all(ar);
     archive_read_support_format_raw(ar);
 
     archive_read_open_fd(ar, fd, BUFLEN);
