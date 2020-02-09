@@ -41,8 +41,7 @@ Check if a new database file is available and then perform the update.
 Force the update.
 .It Sy pattern
 Can be any perl compatible regular expression (PCRE). The search is not case sensitive.
-.Sh EXIT STATUS
-.Ex -std
+.El
 .Sh ENVIRONMENT
 .Bl -tag -width "PROVIDES_FETCH_ON_UPDATE"
 .It PROVIDES_FETCH_ON_UPDATE
@@ -52,7 +51,11 @@ database update after updating pkg.
 .It PROVIDES_URL
 When set, overrides the default
 .Nm
-server URL. The default value is "https://pkg-provides.osorio.me".
+server URL.
+The default value is "https://pkg-provides.osorio.me".
+.El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 Update the provides database:
 .Pp
@@ -65,8 +68,7 @@ Search for a package that provides bin/firefox
 Search for packages that provide a file with the pattern libbz2.so.*
 .Pp
 .Dl $ pkg provides ^libbz2.so.
-.Pp
 .Sh AUTHORS
 .An -nosplit
 .Nm
-.An was written by Rodrigo Osorio <rodrigo@FreeBSD.org>.
+.An was written by Rodrigo Osorio <rodrigo@FreeBSD.org> .
