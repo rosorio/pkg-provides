@@ -48,20 +48,6 @@ bool force_flag = false;
 
 bool fetch_on_update = true;
 
-void provides_progressbar_start(const char *pmsg);
-void provides_progressbar_stop(void);
-void provides_progressbar_tick(int64_t current, int64_t total);
-int mkpath(char *path);
-int bigram_expand(FILE *fp, void (*match_cb)(const char *,struct search_t *), void *extra);
-
-int config_fetch_on_update();
-char * config_get_remote_url();
-
-
-#define BUFLEN 4096
-#define MAX_FN_SIZE 255
-#define PKG_DB_PATH "/var/db/pkg/provides/"
-
 typedef struct file_t {
     char *name;
     SLIST_ENTRY (file_t) next;
@@ -83,6 +69,19 @@ struct search_t {
     char * pattern;
 };
 
+void provides_progressbar_start(const char *pmsg);
+void provides_progressbar_stop(void);
+void provides_progressbar_tick(int64_t current, int64_t total);
+int mkpath(char *path);
+int bigram_expand(FILE *fp, void (*match_cb)(const char *,struct search_t *), void *extra);
+
+int config_fetch_on_update();
+char * config_get_remote_url();
+
+#define BUFLEN 4096
+#define MAX_FN_SIZE 255
+#define PKG_DB_PATH "/var/db/pkg/provides/"
+
 int
 pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 {
@@ -93,7 +92,7 @@ pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 void
 plugin_provides_usage(void)
 {
-    fprintf(stderr, "usage: pkg %s [-uf] pattern\n\n", myname);
+    fprintf(stderr, "usage: pkg %s [-uf] [-r repo] pattern\n\n", myname);
     fprintf(stderr, "%s\n", mydescription);
 }
 
@@ -166,7 +165,7 @@ plugin_archive_extract(int fd, const char *out)
         goto error;
     }
 
-    archive_read_support_compression_all(ar);
+    archive_read_support_filter_all(ar);
     archive_read_support_format_raw(ar);
 
     archive_read_open_fd(ar, fd, BUFLEN);
@@ -427,7 +426,7 @@ match_cb(const char * line, struct search_t *search)
 }
 
 int
-plugin_provides_search(char *pattern)
+plugin_provides_search(char *repo, char *pattern)
 {
     FILE *fh;
     int pcreErrorOffset;
@@ -468,7 +467,9 @@ plugin_provides_search(char *pattern)
     while (pkg_repos(&r) == EPKG_OK) {
         if (pkg_repo_enabled(r)) {
             repo_name = (char *)pkg_repo_name(r);
-            display_per_repo(repo_name, &search.head);
+            if (repo == NULL || strcmp(repo, repo_name) == 0) {
+                display_per_repo(repo_name, &search.head);
+            }
         }
     }
 
@@ -501,14 +502,18 @@ plugin_provides_callback(int argc, char **argv)
 {
     char ch;
     bool do_update = false;
+    char *repo = NULL;
 
-    while ((ch = getopt(argc, argv, "uf")) != -1) {
+    while ((ch = getopt(argc, argv, "ufr:")) != -1) {
         switch (ch) {
         case 'u':
             do_update = true;
             break;
         case 'f':
             force_flag = true;
+            break;
+        case 'r':
+            repo = optarg;
             break;
         default:
             plugin_provides_usage();
@@ -529,7 +534,7 @@ plugin_provides_callback(int argc, char **argv)
         return (EX_USAGE);
     }
 
-    plugin_provides_search(argv[0]);
+    plugin_provides_search(repo, argv[0]);
 
     return (EPKG_OK);
 }

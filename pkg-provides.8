@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd January 25, 2018
+.Dd February 9, 2020
 .Dt PKG-PROVIDES 8
 .Os
 .Sh NAME
@@ -24,6 +24,7 @@
 .Op Fl u
 .Op Fl f
 .Nm
+.Op Fl r Ar repo
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
@@ -39,10 +40,11 @@ The following options are supported by
 Check if a new database file is available and then perform the update.
 .It Fl f
 Force the update.
+.It Fl r Ar repo
+Restrict search results to a specific repository.
 .It Sy pattern
 Can be any perl compatible regular expression (PCRE). The search is not case sensitive.
-.Sh EXIT STATUS
-.Ex -std
+.El
 .Sh ENVIRONMENT
 .Bl -tag -width "PROVIDES_FETCH_ON_UPDATE"
 .It PROVIDES_FETCH_ON_UPDATE
@@ -52,7 +54,11 @@ database update after updating pkg.
 .It PROVIDES_URL
 When set, overrides the default
 .Nm
-server URL. The default value is "https://pkg-provides.osorio.me".
+server URL.
+The default value is "https://pkg-provides.osorio.me".
+.El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 Update the provides database:
 .Pp
@@ -66,7 +72,12 @@ Search for packages that provide a file with the pattern libbz2.so.*
 .Pp
 .Dl $ pkg provides ^libbz2.so.
 .Pp
+Look for bin/firefox but only in the
+.Fx
+repository
+.Pp
+.Dl $ pkg provides -r FreeBSD bin/firefox$
 .Sh AUTHORS
 .An -nosplit
 .Nm
-.An was written by Rodrigo Osorio <rodrigo@FreeBSD.org>.
+.An was written by Rodrigo Osorio <rodrigo@FreeBSD.org> .
