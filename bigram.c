@@ -196,7 +196,7 @@ bigram_expand(FILE *fp, int (*match_cb)(char *,void *), void * extra)
             }
         }
         *p-- = '\0';
-        match_cb(path, extra);
+        match_cb((char *)path, extra);
     }
 
     return (0);

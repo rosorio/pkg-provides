@@ -244,6 +244,8 @@ plugin_fetch_file(void)
         goto error;
     }
 
+    unlink(tmpfile);
+
     fi = fetchXGetURL(url, &us, "");
     if (fi == NULL) {
         goto error;
@@ -287,7 +289,6 @@ error:
 
     if (fo >= 0) {
         close(fo);
-        unlink(tmpfile);
     }
 
     return (-1);
