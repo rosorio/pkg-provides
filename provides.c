@@ -441,6 +441,8 @@ plugin_provides_search(char *repo, char *pattern)
 
     struct search_t search;
 
+    memset(&search, 0, sizeof(search));
+
     search.pattern = pattern;
 
     SLIST_INIT (&search.head);
