@@ -77,6 +77,7 @@ int bigram_expand(FILE *fp, void (*match_cb)(const char *,struct search_t *), vo
 
 int config_fetch_on_update();
 char * config_get_remote_url();
+char * config_get_full_remote_url();
 
 #define BUFLEN 4096
 #define MAX_FN_SIZE 255
@@ -148,6 +149,20 @@ int get_filepath(char *filename, size_t size)
 }
 
 int
+get_url(char *url, size_t size)
+{
+    char filepath[MAX_FN_SIZE + 1];
+    if(get_filepath(filepath, MAX_FN_SIZE) != 0) {
+        fprintf(stderr,"Can't get the OS ABI\n");
+        return (-1);
+    }
+
+    snprintf(url, size, "%s/%s/%s/provides.db.xz", config_get_remote_url(),
+             dbversion, filepath);
+    return 0;
+}
+
+int
 plugin_archive_extract(int fd, const char *out)
 {
 
@@ -189,7 +204,7 @@ error:
 }
 
 int
-plugin_fetch_file(void)
+plugin_fetch_file()
 {
     char buffer[BUFLEN];
     FILE *fi;
@@ -200,15 +215,17 @@ plugin_fetch_file(void)
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
     struct stat sb;
     char path[] =PKG_DB_PATH;
-    char filepath[MAX_FN_SIZE + 1];
-    char url[MAXPATHLEN];
+    char urlbuf[MAXPATHLEN];
+    const char *url;
 
-    if(get_filepath(filepath, MAX_FN_SIZE) != 0) {
-        fprintf(stderr,"Can't get the OS ABI\n");
-        return (-1);
+    url = config_get_full_remote_url();
+    if (url == NULL) {
+        if(get_url(urlbuf, sizeof(urlbuf)) != 0) {
+            fprintf(stderr, "Error building the remote url.\n");
+            return (-1);
+        }
+        url = urlbuf;
     }
-
-    sprintf(url, "%s/%s/%s/provides.db.xz", config_get_remote_url(), dbversion, filepath);
     ft = open( PKG_DB_PATH "provides.db", O_WRONLY);
     if (ft < 0) {
         if (errno == ENOENT) {

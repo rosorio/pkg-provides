@@ -57,3 +57,9 @@ config_get_remote_url()
     }
     return (url);
 }
+
+char *
+config_get_full_remote_url()
+{
+    return getenv("PROVIDES_FULL_URL");
+}
