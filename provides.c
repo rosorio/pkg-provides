@@ -484,6 +484,7 @@ plugin_provides_search(char *repo, char *pattern)
     pcre_free(search.pcre);
     pcre_free(search.pcreExtra);
     free_list(&search.head);
+    return (0);
 
 error_pcre:
     fclose(fh);
