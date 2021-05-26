@@ -241,6 +241,7 @@ plugin_fetch_file(void)
 
     fo = mkstemp(tmpfile);
     if(fo < 0) {
+        fprintf(stderr, "mkstemp failed\n");
         goto error;
     }
 
@@ -248,6 +249,7 @@ plugin_fetch_file(void)
 
     fi = fetchXGetURL(url, &us, "");
     if (fi == NULL) {
+        fprintf(stderr, "fetchXGetURL error: %s\n", url);
         goto error;
     }
 
@@ -255,6 +257,7 @@ plugin_fetch_file(void)
     provides_progressbar_tick(size,us.size);
     while ((count = fread(buffer, 1, BUFLEN, fi)) > 0) {
         if(write(fo, buffer, count) != count) {
+            fprintf(stderr, "Could not write to temporary file.\n");
             goto error;
         }
         size += count;
@@ -262,6 +265,7 @@ plugin_fetch_file(void)
     }
 
     if (!feof(fi)) {
+        fprintf(stderr, "Error reading from %s\n", url);
         goto error;
     }
 
