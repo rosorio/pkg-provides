@@ -76,7 +76,8 @@ int mkpath(char *path);
 int bigram_expand(FILE *fp, void (*match_cb)(const char *,struct search_t *), void *extra);
 
 int config_fetch_on_update();
-char * config_get_remote_url();
+char *config_get_remote_srv();
+char *config_get_filepath();
 
 #define BUFLEN 4096
 #define MAX_FN_SIZE 255
@@ -112,6 +113,11 @@ int get_filepath(char *filename, size_t size)
     char sep[] = "-";
 #endif
 
+    ptr = config_get_filepath();
+    if (ptr != NULL) {
+        strncpy(filename, ptr, size);
+        return 0;
+    }
 
     len = sizeof osname;
     if (sysctl(mib_os, 2, &osname, &len, NULL, 0) == -1) {
@@ -140,7 +146,7 @@ int get_filepath(char *filename, size_t size)
     }
 #endif
 
-    if(snprintf(filename, size, "%s/%s:%s",osname,osver, arch) < 0) {
+    if(snprintf(filename, size, "%s/%s/%s:%s", dbversion, osname, osver, arch) < 0) {
         return -1;
     }
 
@@ -201,14 +207,14 @@ plugin_fetch_file(void)
     struct stat sb;
     char path[] =PKG_DB_PATH;
     char filepath[MAX_FN_SIZE + 1];
-    char url[MAXPATHLEN];
+    char url[MAXPATHLEN + 1];
 
     if(get_filepath(filepath, MAX_FN_SIZE) != 0) {
         fprintf(stderr,"Can't get the OS ABI\n");
         return (-1);
     }
 
-    sprintf(url, "%s/%s/%s/provides.db.xz", config_get_remote_url(), dbversion, filepath);
+    snprintf(url, MAXPATHLEN , "%s/%s/provides.db.xz", config_get_remote_srv(), filepath);
     ft = open( PKG_DB_PATH "provides.db", O_WRONLY);
     if (ft < 0) {
         if (errno == ENOENT) {

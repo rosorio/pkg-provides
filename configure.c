@@ -27,10 +27,12 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #define PKG_DB_URL  "https://pkg-provides.osorio.me"
 
 static char * url = NULL;
+static char * filepath = NULL;
 
 int
 config_fetch_on_update()
@@ -44,16 +46,35 @@ config_fetch_on_update()
 }
 
 char *
-config_get_remote_url()
+config_get_remote_srv()
 {
     const char * env;
 
     if (url == NULL) {
-        env = getenv("PROVIDES_URL");
+        env = getenv("PROVIDES_SRV");
+        if (env == NULL) {
+            /* DEPRECATED, must be removed */
+            env = getenv("PROVIDES_URL");
+            if (env) {
+                fprintf(stderr, "Warning: PROVIDES_URL environment variable is deprecated, use PROVIDES_SRV instead\n");
+            }
+        }
         url = strdup((env != NULL) ? env : PKG_DB_URL);
         if (url == NULL) {
             exit(ENOMEM);
         }
     }
     return (url);
+}
+
+
+char *
+config_get_filepath()
+{
+    const char * env;
+    if (filepath == NULL) {
+        env = getenv("PROVIDES_FILEPATH");
+        filepath = env ? strdup(env) : NULL;
+    }
+    return filepath;
 }
