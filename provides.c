@@ -40,7 +40,7 @@
 #include <sys/queue.h>
 
 static char myname[] = "provides";
-static char myversion[] = "0.7.1";
+static char myversion[] = "0.7.2";
 static char dbversion[] = "v3";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
@@ -333,7 +333,6 @@ display_per_repo(char *repo_name, struct pkg_head_t *head)
 {
     struct pkgdb_it *it;
     struct pkg *pkg = NULL;
-    const char *name, *version, *comment;
     struct pkg_repo *r = NULL;
     struct pkgdb *db = NULL;
     fpkg_t *pnode;
@@ -357,11 +356,13 @@ display_per_repo(char *repo_name, struct pkg_head_t *head)
             continue;
         }
 
-        pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_COMMENT, &comment);
-        printf("Name    : %s-%s\n", name, version);
-        printf("Desc    : %s\n", comment);
-        printf("Repo    : %s\n", repo_name);
-
+        printf("%-8s: ", "Name");
+        pkg_printf("%n-", pkg);
+        pkg_printf("%v\n", pkg);
+        printf("%-8s: ", "Comment");
+        pkg_printf("%c\n", pkg);
+        printf("%-8s: ", "Repo");
+        printf("%s\n", repo_name);
 
         SLIST_FOREACH(pfile,&(pnode->files), next) {
             if(SLIST_FIRST(&(pnode->files)) == pfile) {
