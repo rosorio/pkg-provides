@@ -40,7 +40,7 @@
 #include <sys/queue.h>
 
 static char myname[] = "provides";
-static char myversion[] = "0.7.2";
+static char myversion[] = "0.7.3";
 static char dbversion[] = "v3";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
@@ -515,7 +515,7 @@ int cb_event(void *data, struct pkgdb *db) {
 int
 plugin_provides_callback(int argc, char **argv)
 {
-    char ch;
+    int ch;
     bool do_update = false;
     char *repo = NULL;
 
