@@ -57,8 +57,7 @@ char separator='\n';   /* line separator */
  * or the database is obviously not a locate database.
  */
 int
-check_bigram_char(ch)
-    int ch;
+check_bigram_char(int ch)
 {
     /* legal bigram: 0, ASCII_MIN ... ASCII_MAX */
     if (ch == 0 ||
@@ -80,8 +79,7 @@ check_bigram_char(ch)
  */
 
 int
-getwm(p)
-    caddr_t p;
+getwm(caddr_t p)
 {
     union {
         char buf[INTSIZE];
@@ -115,8 +113,7 @@ getwm(p)
  */
 
 int
-getwf(fp)
-    FILE *fp;
+getwf(FILE *fp)
 {
     register int word, hword;
 

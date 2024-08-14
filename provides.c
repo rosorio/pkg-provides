@@ -24,6 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define PCRE2_CODE_UNIT_WIDTH 8
+
 #include <sysexits.h>
 #include <unistd.h>
 #include <pkg.h>
@@ -34,7 +36,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <archive_entry.h>
-#include <pcre.h>
+#include <pcre2.h>
 #include <libgen.h>
 #include <sys/sysctl.h>
 #include <sys/queue.h>
@@ -63,10 +65,10 @@ SLIST_HEAD (pkg_head_t, fpkg_t);
 
 struct search_t {
     struct pkg_head_t head;
-    pcre *pcre;
-    pcre_extra *pcreExtra;
+    pcre2_code *regex;
     fpkg_t *pnode;
     char * pattern;
+    pcre2_match_data *match_data;
 };
 
 void provides_progressbar_start(const char *pmsg);
@@ -398,7 +400,7 @@ match_cb(const char * line, struct search_t *search)
             exp = basename(fullpath);
         }
 
-        if (pcre_exec(search->pcre, search->pcreExtra, exp, strlen(exp), 0, 0, NULL, 0) >= 0) {
+        if (pcre2_match(search->regex, (PCRE2_SPTR)exp, strlen(exp), 0, 0, search->match_data, NULL) > 0) {
             int found = 0;
             char * name = strndup(line, (separator - line + 1));
             name[separator - line] = '\0';
@@ -441,8 +443,8 @@ int
 plugin_provides_search(char *repo, char *pattern)
 {
     FILE *fh;
-    int pcreErrorOffset;
-    const char *pcreErrorStr;
+    PCRE2_SIZE pcreErrorOffset;
+    int pcreErrorNumber;
     char *repo_name;
     struct pkg_repo *r = NULL;
 
@@ -460,19 +462,14 @@ plugin_provides_search(char *repo, char *pattern)
         return (-1);
     }
 
-    search.pcre = pcre_compile(pattern, PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
+    search.regex = pcre2_compile((PCRE2_SPTR)pattern, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS, &pcreErrorNumber, &pcreErrorOffset, NULL);
 
-    if(search.pcre == NULL) {
+    if(search.regex == NULL) {
         fprintf(stderr, "Invalid search pattern\n");
         goto error_pcre;
     }
 
-    search.pcreExtra = pcre_study(search.pcre, 0, &pcreErrorStr);
-
-    if(search.pcreExtra == NULL) {
-        fprintf(stderr, "Invalid search pattern\n");
-        goto error_pcre;
-    }
+    search.match_data = pcre2_match_data_create_from_pattern(search.regex, NULL);
 
     if (bigram_expand(fh, &match_cb, &search) == -1) {
         fprintf(stderr, "Corrupted database\n");
@@ -487,19 +484,17 @@ plugin_provides_search(char *repo, char *pattern)
         }
     }
 
+    pcre2_match_data_free(search.match_data);
+
     fclose(fh);
-    pcre_free(search.pcre);
-    pcre_free(search.pcreExtra);
+    pcre2_code_free(search.regex);
     free_list(&search.head);
     return (0);
 
 error_pcre:
     fclose(fh);
-    if (search.pcre != NULL) {
-        pcre_free(search.pcre);
-    }
-    if (search.pcreExtra != NULL) {
-        pcre_free(search.pcreExtra);
+    if (search.regex != NULL) {
+        pcre2_code_free(search.regex);
     }
     return (-1);
 }
