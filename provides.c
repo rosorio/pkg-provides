@@ -217,39 +217,30 @@ plugin_fetch_file(void)
     }
 
     snprintf(url, MAXPATHLEN , "%s/%s/provides.db.xz", config_get_remote_srv(), filepath);
-    ft = open( PKG_DB_PATH "provides.db", O_WRONLY);
-    if (ft < 0) {
-        if (errno == ENOENT) {
-            if (mkpath(path) == 0) {
-                ft = open(PKG_DB_PATH "provides.db", O_RDWR | O_CREAT);
-	        }
-        }
-        if (ft < 0) {
-            fprintf(stderr,"Insufficient privileges to update the provides database.\n");
+
+    bool file_exists = (stat(PKG_DB_PATH "provides.db", &sb) == 0);
+
+    if (!file_exists) {
+        // Database doesn't exist, ensure directory exists
+        if (mkpath(path) != 0) {
+            fprintf(stderr, "Insufficient privileges to update the provides database.\n");
             return (-1);
         }
-        unlink(PKG_DB_PATH "provides.db");
-    } else {
-        if(fstat(ft, &sb) < 0) {
-            fprintf(stderr,"fstat error\n");
-            close(ft);
-            return (-1);
-        }
-        close(ft);
-        if(fetchStatURL(url, &us, "") != 0) {
-            fprintf(stderr,"fetchStatURL error : %s\n",url);
+    } else if (!force_flag) {
+        // File exists, check if remote is newer (only if not forced)
+        if (fetchStatURL(url, &us, "") != 0) {
+            fprintf(stderr, "fetchStatURL error: %s\n", url);
             return -1;
         }
-        if(us.mtime < sb.st_mtim.tv_sec && (!force_flag)) {
+        if (us.mtime < sb.st_mtim.tv_sec) {
             printf("The provides database is up-to-date.\n");
             return (0);
         }
     }
-    close(ft);
 
     fo = mkstemp(tmpfile);
     if(fo < 0) {
-        fprintf(stderr, "mkstemp failed\n");
+        fprintf(stderr, "mkstemp failed: %s\n", strerror(errno));
         goto error;
     }
 
