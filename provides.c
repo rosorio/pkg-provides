@@ -291,7 +291,7 @@ plugin_fetch_file(void)
     printf("Extracting database....");
     fflush(stdout);
 
-    lseek(fo, SEEK_SET, 0);
+    lseek(fo, 0, SEEK_SET);
     if (plugin_archive_extract(fo, PKG_DB_PATH "provides.db") != 0 ) {
         printf("fail\n");
         goto error;
