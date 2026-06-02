@@ -29,7 +29,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <pkg.h>
-#include <fetch.h>
+#include <curl/curl.h>
 #include <errno.h>
 #include <strings.h>
 #include <archive.h>
@@ -176,14 +176,23 @@ plugin_archive_extract(int fd, const char *out)
     archive_read_support_filter_all(ar);
     archive_read_support_format_raw(ar);
 
-    archive_read_open_fd(ar, fd, BUFLEN);
-
-    if (archive_read_next_header(ar, &ae) == ARCHIVE_OK) {
-        if (archive_read_data_into_fd(ar, fd_out) != 0) {
-            fprintf(stderr,"archive_read_data failed\n");
-            goto error;
-        }
+    int r = archive_read_open_fd(ar, fd, BUFLEN);
+    if (r != ARCHIVE_OK) {
+        fprintf(stderr, "archive_read_open_fd failed: %s\n", archive_error_string(ar));
+        goto error;
     }
+
+    r = archive_read_next_header(ar, &ae);
+    if (r != ARCHIVE_OK) {
+        fprintf(stderr, "archive_read_next_header failed: %s\n", archive_error_string(ar));
+        goto error;
+    }
+
+    if (archive_read_data_into_fd(ar, fd_out) != 0) {
+        fprintf(stderr, "archive_read_data failed: %s\n", archive_error_string(ar));
+        goto error;
+    }
+
     archive_read_free(ar);
     close(fd_out);
     return (0);
@@ -196,27 +205,118 @@ error:
     return -1;
 }
 
+struct curl_write_data {
+    int fd;
+    int64_t size;
+    int64_t total_size;
+};
+
+static size_t
+provides_write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    struct curl_write_data *data = (struct curl_write_data *)userdata;
+    size_t total = size * nmemb;
+    ssize_t written = 0;
+    ssize_t bytes_written = 0;
+
+    while (bytes_written < total) {
+        written = write(data->fd, (char *)ptr + bytes_written, total - bytes_written);
+        if (written < 0) {
+            if (errno == EINTR) {
+                continue;  // Interrupted by signal, retry
+            }
+            fprintf(stderr, "Could not write to temporary file: %s\n", strerror(errno));
+            return 0;  // Signal error to curl
+        }
+        bytes_written += written;
+    }
+
+    data->size += bytes_written;
+    if (data->total_size > 0) {
+        provides_progressbar_tick(data->size, data->total_size);
+    }
+
+    return bytes_written;
+}
+
+static int
+provides_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
+                           curl_off_t ultotal, curl_off_t ulnow)
+{
+    struct curl_write_data *data = (struct curl_write_data *)clientp;
+
+    if (dltotal > 0 && data->total_size == 0) {
+        data->total_size = dltotal;
+    }
+
+    return 0;
+}
+
+static int
+curl_get_mtime(const char *url, time_t *mtime)
+{
+    CURL *curl;
+    CURLcode res;
+    long response_code;
+    long file_time;
+
+    curl = curl_easy_init();
+    if (!curl) {
+        fprintf(stderr, "curl_easy_init failed\n");
+        return -1;
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);  // HEAD request
+    curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        fprintf(stderr, "curl HEAD request failed: %s\n", curl_easy_strerror(res));
+        curl_easy_cleanup(curl);
+        return -1;
+    }
+
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    if (response_code != 200) {
+        fprintf(stderr, "HTTP error: %ld\n", response_code);
+        curl_easy_cleanup(curl);
+        return -1;
+    }
+
+    res = curl_easy_getinfo(curl, CURLINFO_FILETIME, &file_time);
+    if (res == CURLE_OK && file_time >= 0) {
+        *mtime = (time_t)file_time;
+    } else {
+        *mtime = 0;
+    }
+
+    curl_easy_cleanup(curl);
+    return 0;
+}
+
 int
 plugin_fetch_file(void)
 {
-    char buffer[BUFLEN];
-    FILE *fi;
-    int fo, ft;
-    int count;
-    struct url_stat us;
-    int64_t size = 0;
+    CURL *curl;
+    CURLcode res;
+    int fo;
+    time_t remote_mtime = 0;
+    struct curl_write_data write_data;
     char tmpfile[] = "/var/tmp/pkg-provides-XXXX";
     struct stat sb;
-    char path[] =PKG_DB_PATH;
+    char path[] = PKG_DB_PATH;
     char filepath[MAX_FN_SIZE + 1];
     char url[MAXPATHLEN + 1];
 
-    if(get_filepath(filepath, MAX_FN_SIZE) != 0) {
-        fprintf(stderr,"Can't get the OS ABI\n");
+    if (get_filepath(filepath, MAX_FN_SIZE) != 0) {
+        fprintf(stderr, "Can't get the OS ABI\n");
         return (-1);
     }
 
-    snprintf(url, MAXPATHLEN , "%s/%s/provides.db.xz", config_get_remote_srv(), filepath);
+    snprintf(url, MAXPATHLEN, "%s/%s/provides.db.xz", config_get_remote_srv(), filepath);
 
     bool file_exists = (stat(PKG_DB_PATH "provides.db", &sb) == 0);
 
@@ -228,54 +328,52 @@ plugin_fetch_file(void)
         }
     } else if (!force_flag) {
         // File exists, check if remote is newer (only if not forced)
-        if (fetchStatURL(url, &us, "") != 0) {
-            fprintf(stderr, "fetchStatURL error: %s\n", url);
+        if (curl_get_mtime(url, &remote_mtime) != 0) {
+            fprintf(stderr, "Failed to get remote file info: %s\n", url);
             return -1;
         }
-        if (us.mtime < sb.st_mtim.tv_sec) {
+        if (remote_mtime > 0 && remote_mtime < sb.st_mtim.tv_sec) {
             printf("The provides database is up-to-date.\n");
             return (0);
         }
     }
 
     fo = mkstemp(tmpfile);
-    if(fo < 0) {
+    if (fo < 0) {
         fprintf(stderr, "mkstemp failed: %s\n", strerror(errno));
         goto error;
     }
 
     unlink(tmpfile);
 
-    fi = fetchXGetURL(url, &us, "");
-    if (fi == NULL) {
-        fprintf(stderr, "fetchXGetURL error: %s\n", url);
+    curl = curl_easy_init();
+    if (!curl) {
+        fprintf(stderr, "curl_easy_init failed\n");
         goto error;
     }
 
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, provides_write_callback);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, provides_progress_callback);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+
+    write_data.fd = fo;
+    write_data.size = 0;
+    write_data.total_size = 0;
+
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_data);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &write_data);
+
     provides_progressbar_start("Fetching provides database");
-    provides_progressbar_tick(size,us.size);
-    while ((count = fread(buffer, 1, BUFLEN, fi)) > 0) {
-        ssize_t written = 0;
-        ssize_t total = 0;
 
-        while (total < count) {
-            written = write(fo, buffer + total, count - total);
-            if (written < 0) {
-                if (errno == EINTR) {
-                    continue;  // Interrupted by signal, retry
-                }
-                fprintf(stderr, "Could not write to temporary file: %s\n",
-                        strerror(errno));
-                goto error;
-            }
-            total += written;
-        }
-        size += count;
-        provides_progressbar_tick(size,us.size);
-    }
+    res = curl_easy_perform(curl);
 
-    if (!feof(fi)) {
-        fprintf(stderr, "Error reading from %s\n", url);
+    provides_progressbar_stop();
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        fprintf(stderr, "curl download failed: %s\n", curl_easy_strerror(res));
         goto error;
     }
 
@@ -283,23 +381,19 @@ plugin_fetch_file(void)
     fflush(stdout);
 
     lseek(fo, 0, SEEK_SET);
-    if (plugin_archive_extract(fo, PKG_DB_PATH "provides.db") != 0 ) {
+    if (plugin_archive_extract(fo, PKG_DB_PATH "provides.db") != 0) {
         printf("fail\n");
         goto error;
     }
-    lchmod(PKG_DB_PATH "provides.db",S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+    lchmod(PKG_DB_PATH "provides.db", S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     printf("success\n");
 
-    fclose(fi);
     close(fo);
 
     return EPKG_OK;
 
 error:
-    if (fi != NULL) {
-        fclose(fi);
-        provides_progressbar_stop();
-    }
+    provides_progressbar_stop();
 
     if (fo >= 0) {
         close(fo);
