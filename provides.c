@@ -264,9 +264,20 @@ plugin_fetch_file(void)
     provides_progressbar_start("Fetching provides database");
     provides_progressbar_tick(size,us.size);
     while ((count = fread(buffer, 1, BUFLEN, fi)) > 0) {
-        if(write(fo, buffer, count) != count) {
-            fprintf(stderr, "Could not write to temporary file.\n");
-            goto error;
+        ssize_t written = 0;
+        ssize_t total = 0;
+
+        while (total < count) {
+            written = write(fo, buffer + total, count - total);
+            if (written < 0) {
+                if (errno == EINTR) {
+                    continue;  // Interrupted by signal, retry
+                }
+                fprintf(stderr, "Could not write to temporary file: %s\n",
+                        strerror(errno));
+                goto error;
+            }
+            total += written;
         }
         size += count;
         provides_progressbar_tick(size,us.size);
