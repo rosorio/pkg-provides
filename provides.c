@@ -42,7 +42,7 @@
 #include <sys/queue.h>
 
 static char myname[] = "provides";
-static char myversion[] = "0.7.4";
+static char myversion[] = "0.8.0";
 static char dbversion[] = "v3";
 static char mydescription[] = "A plugin for querying which package provides a particular file";
 static struct pkg_plugin *self;
